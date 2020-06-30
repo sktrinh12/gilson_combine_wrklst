@@ -1,0 +1,4 @@
+cx_oracle
+gunicorn
+Flask
+pandas

@@ -1,0 +1,13 @@
+# Ignore everything
+**
+
+# Allow files and directories
+!/app.py
+!/functions.py
+!/gunicorn_config.py
+!/requirements.txt
+!/static/**
+!/templates/**
+!/env_file_name
+!/instantclient-basiclite-linux.x64-19.3.0.0.0dbru.zip
+!/instantclient-sdk-linux.x64-19.3.0.0.0dbru.zip
