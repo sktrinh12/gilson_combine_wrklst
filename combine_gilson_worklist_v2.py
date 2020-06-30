@@ -2,24 +2,30 @@ import os
 import sys
 import re
 import datetime
+import platform
 
-#shared_drive = 'N:/tecan/SourceData/SecondStage/'
-shared_drive = '/Volumes/npsg/tecan/SourceData/SecondStage/'
-#shared_drive = '/Users/trinhsk/Documents/pythonScripts/tsl_files/'
+if platform.system() == "Windows":
+    shared_drive = 'N:\\tecan\\SourceData\\SecondStage\\'
+    fp_delim = '\\'
+else:
+    shared_drive = '/Volumes/npsg/tecan/SourceData/SecondStage/'
+    fp_delim = '/'
 
+sample_list_dir = 'Sample List_tsl'
 list_file_names = []
 
 def readFiles(rack_code):
     global list_file_names
     file_content = None
-    if os.path.exists(shared_drive):
-        for fi in os.listdir(shared_drive):
+    file_path_to_file = f"{shared_drive}{sample_list_dir}"
+    if os.path.exists(file_path_to_file):
+        for fi in os.listdir(file_path_to_file):
             if fi.endswith('.tsl') and 'secStg' in fi:
                 if rack_code in fi:
                     try:
-                        file_mtime = os.stat(os.path.join(shared_drive,fi)).st_mtime
+                        file_mtime = os.stat(os.path.join(file_path_to_file,fi)).st_mtime
                         if datetime.datetime.fromtimestamp(file_mtime) < datetime.datetime.today():
-                            file_name = os.path.join(shared_drive,fi)
+                            file_name = os.path.join(file_path_to_file,fi)
                             list_file_names.append(fi)
                             with open(file_name, 'r') as f:
                                 file_content = f.readlines()
@@ -64,7 +70,6 @@ def replace_tsl_values_2(tsl, plt_start) :
                 padding = ""
             else:
                 padding = "0"
-
             str_plt_well = re.search('\tP\d{2}S\d{2}\n', line).group(0)
             new_tsl[i] = line.replace(str_plt_well, f"\tP{padding}{plt_start}S0{well_loc}\n")
             if line_cnt % 4 == 0:
@@ -85,9 +90,11 @@ def grab_sam_plt_nums(file1):
         int_start_sample_pos = int_start_sample_pos + (int_start_sample_pos % 4)
     return int_start_sample_pos, int_start_plt_loc
 
-def extract_brooks_bc(file):
+def extract_brooks_bc(tsl_file):
     try:
-        return re.search('...\t\d{3,}\t',file[5]).group(0).split('\t')[1]
+        for i in reversed(range(len(tsl_file))):
+            if not re.search('\t0.?\n',tsl_file[i]): # if do not see the 0 in the sample well pos (it's a sample not std/flush)
+                return re.search('(...\t)(\d{3,}\s)',tsl_file[i]).group(2).strip()
     except Exception as e:
         return 'NA'
 
@@ -109,7 +116,7 @@ if __name__ == "__main__":
             file_2_suffix = list_of_racks[1][8:]
             bbc1 = extract_brooks_bc(file1)
             bbc2 = extract_brooks_bc(file2)
-            with open(f"{shared_drive}/{project_id}_{file_1_suffix}_{file_2_suffix}_{bbc1}_{bbc2}.tsl", 'w') as f:
+            with open(f"{shared_drive}Sample List_Combined_tmp{fp_delim}{project_id}_{file_1_suffix}_{file_2_suffix}_{bbc1}_{bbc2}.tsl", 'w') as f:
                 for line in new_tsl:
                     f.write(line)
 
