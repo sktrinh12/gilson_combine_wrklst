@@ -1,9 +1,7 @@
 from flask import render_template, Markup, request
 import os
 from functions import *
-
 import cx_Oracle
-from flask import Flask 
 
 app = Flask(__name__)
 
