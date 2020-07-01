@@ -3,6 +3,8 @@
 
 # Allow files and directories
 !/app.py
+!/init.py
+!/config.py
 !/functions.py
 !/gunicorn_config.py
 !/requirements.txt
