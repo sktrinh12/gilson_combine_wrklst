@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+
+{% block body %}
+
+<div>
+	<h4>Filename: {{ tsl_file_name }} </h4>
+</div>
+
+{% for table in tables %}
+            {{ table|safe }}
+{% endfor %}
+
+{% endblock %}
