@@ -1,15 +1,48 @@
 import cx_Oracle
 import pandas as pd
-import sys
 import os
 from datetime import datetime
 from socket import gethostname
 
+ORACLE_HOST = os.environ['ORACLE_HOST']
+ORACLE_PORT = os.environ['ORACLE_PORT']
+ORACLE_SERVNAME = os.environ['ORACLE_SERVNAME']
+ORACLE_PASS = os.environ['ORACLE_PASS']
+ORACLE_USER = os.environ['ORACLE_USER']
+
 dsn_tns = cx_Oracle.makedsn(ORACLE_HOST,ORACLE_PORT,service_name=ORACLE_SERVNAME)
+column_headers = ['SEQ_NUM','FINISH_DATE','PROJECT_ID','METHOD_NAME','SAMPLE_NAME','BARCODE','PLATE_ID','BROOKS_BARCODE','SAMPLE_WELL','PLATE_POSITION','GILSON_NUMBER']
 
-reg_path = r"Volatile Environment"
-reg_key_val = r"WORKLIST_FILEPATH"
 
+def output_file_path():
+    wl_file = 'WORKLIST_FILEPATH.txt'
+    mnt_dr = '/mnt/worklist_dir'
+    wl_path = os.path.join(mnt_dr, wl_file) 
+    if not os.path.exists(wl_path):
+        return wl_file 
+    else:
+        return wl_path
+
+def convert_to_file_path(input_file_path):
+	if '/' not in input_file_path and '-' in input_file_path:
+		file_path = '/'
+		for _ in input_file_path.split('-'):
+			file_path += _ + '/'
+		return file_path[:-1]
+	else:
+		return input_file_path
+
+def check_in_project_ids(input_project_id):
+    '''Gets the distinct project ids to verify the inputted value is valid'''
+    with cx_Oracle.connect(ORACLE_USER,ORACLE_PASS,dsn_tns) as con: 
+        cursor = con.cursor()
+        cursor.execute(f"SELECT DISTINCT PROJECT_ID FROM GILSON_RUN_LOGS")
+        proj_ids = cursor.fetchall()
+    proj_ids = [_[0] for _ in proj_ids]
+    if input_project_id in proj_ids:
+        return True
+    else:
+        return False
     
 def grab_rows(fi_content_df):
     '''Grab the valid rows from the worklist file'''
@@ -31,6 +64,11 @@ def split_string_input_file(input_file):
     elif '\\' in input_file:
         input_file = input_file.split('\\')[-1]
     return input_file
+
+def get_column_names_db(cursor):
+    cursor.execute("SELECT column_name FROM all_tab_cols WHERE table_name = 'GILSON_RUN_LOGS'")
+    output = cursor.fetchall()
+    return [_[0] for _ in output]
 
 def imbue_rows(dir_fi, gil_num=gethostname()):
     '''print out each row after extracting data from raw worklist file and then repare for sql entry'''
@@ -55,7 +93,9 @@ def imbue_rows(dir_fi, gil_num=gethostname()):
     current_time =  datetime.now().strftime("%Y-%b-%d %H:%M")
     
     with cx_Oracle.connect(ORACLE_USER,ORACLE_PASS,dsn_tns) as con: 
+        tmp_df_list = [] 
         cursor = con.cursor()
+        return_df = pd.DataFrame(columns=column_headers)
         for i in range(24): 
             row_data = ["BLANK"]*11
             row_data[0] = i 
@@ -74,6 +114,8 @@ def imbue_rows(dir_fi, gil_num=gethostname()):
                 row_data[9] = rdata_df['#Plate_Sample[True,115,13]']
             except IndexError: 
                  pass #print('passing as a blank ...')
+            tmp_df_list.append(row_data)
             #print(row_data)
-            cursor.execute(f"""insert into GILSON_RUN_LOGS values (:1, :2, :3, :4, :5, :6, :7, :8, :9, :10, :11)""", row_data)
-        con.commit()
+            #cursor.execute(f"""insert into GILSON_RUN_LOGS values (:1, :2, :3, :4, :5, :6, :7, :8, :9, :10, :11)""", row_data)
+        #con.commit()
+        return return_df.append(pd.DataFrame(tmp_df_list, columns=column_headers))
