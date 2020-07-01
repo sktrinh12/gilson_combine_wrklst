@@ -1,5 +1,7 @@
 ARG PYTHON_VERSION=3.7
+
 FROM ubuntu:18.04 AS client
+
 ARG ORACLE_HOST
 ARG ORACLE_PORT
 ARG ORACLE_SERVNAME
@@ -36,7 +38,7 @@ ADD . /app
 WORKDIR /app
 ADD requirements.txt /tmp/requirements.txt
 RUN pip install -r /tmp/requirements.txt 
-EXPOSE 8000 
+EXPOSE 8003 
 COPY --from=client /root/oracle ${ORACLE_HOME}
 RUN apt-get update \
 	&& apt-get -yq install libaio1 \
@@ -47,5 +49,8 @@ RUN apt-get update \
 	&& mkdir -p ${TNS_ADMIN} \
 	&& ldconfig \
 	&& rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+VOLUME "/mnt/worklist_dir"
+VOLUME "/mnt/tsl_dir"
 
 CMD ["gunicorn", "-c", "gunicorn_config.py", "app:app"]
