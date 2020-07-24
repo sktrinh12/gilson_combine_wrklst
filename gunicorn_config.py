@@ -1,9 +1,9 @@
 #Gunicorn configuration file
-from multiprocessing import cpu_count
+#from multiprocessing import cpu_count
 bind = '0.0.0.0:8003'
 backlog = 2048
 threads = 2
-workers = cpu_count() - 2
+workers = 2 
 worker_class = 'sync'
 worker_connections = 1000
 timeout = 120 
@@ -20,4 +20,4 @@ errorlog = '-'
 loglevel = 'info'
 accesslog = '-'
 access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s"'
-proc_name = None
+proc_name = 'app' 
