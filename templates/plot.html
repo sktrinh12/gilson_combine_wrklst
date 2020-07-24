@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block body %}
+
+<div class="row">
+	<div class="col-md-6">
+		<h4>Plot</h4>
+		    <div class="chart" id="plot">
+			<script>
+				var graphs = {{plot | safe}};
+				Plotly.plot('plot',graphs,{
+							displaylogo: false,
+							editable: true,
+							showlink: false
+				});
+		        </script>
+		    </div>
+	</div>
+</div>
+
+{% endblock %}
