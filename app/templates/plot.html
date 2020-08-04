@@ -1,0 +1,66 @@
+{% extends 'base_plot.html' %}
+
+{% block body %}
+
+<div class="row">
+	<div class="col-md-6">
+	<h4>
+		<li>Project ID:
+			<span class="data-info-colour">
+				{{data_dict.project_id|safe}}/{{data_dict.id_suffix|safe}}
+			</span>
+		</li>
+		<li>Method Name:
+			<span class="data-info-colour">
+				{{data_dict.method_name|safe}}
+			</span>
+		</li>
+		<li>Sample Name:
+			<span class="data-info-colour">
+				{{data_dict.sample_name|safe}}
+			</span>
+		</li>
+		<li>Sample Well:
+			<span class="data-info-colour">
+				{{data_dict.sample_well|safe}}
+			</span>
+		</li>
+		<li>Plate Location:
+			<span class="data-info-colour">
+				{{data_dict.plate_loc|safe}}
+			</span>
+		</li>
+		<li>Barcode:
+			<span class="data-info-colour">
+				{{data_dict.barcode|safe}}
+			</span>
+		</li>
+		<li>Brooks Barcode:
+			<span class="data-info-colour">
+				{{data_dict.brooks_barcode|safe}}
+			</span>
+		</li>
+		<li>Gilson Number:
+			<span class="data-info-colour">
+				{{data_dict.gilson_number|safe}}
+			</span>
+		</li>
+	</h4>
+		    <div class="chart" id="plot">
+			<script>
+				var config = {
+					displayLogo:false
+				};
+				var graphs = {{plot | safe}};
+				Plotly.plot('plot',graphs,config=config);
+				// remove stupid plotly logo since setting in config param didn't work
+				var list = document.getElementsByClassName('modebar modebar--hover ease-bg');
+				list[0].removeChild(list[0].childNodes[3]);
+				console.log('removed first modebar button');
+				list[0].removeChild(list[0].childNodes[3]);
+		        </script>
+		    </div>
+	</div>
+</div>
+
+{% endblock %}
