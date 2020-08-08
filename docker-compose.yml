@@ -1,16 +1,19 @@
 version: '3.7'
+      # - /Users/trinhsk/Documents/GitRepos/gilson_webapp/test_files:/usr/src/app/mnt/uvdata_files
+      # - /Users/trinhsk/Documents/GitRepos/gilson_webapp/test_files:/usr/src/app/mnt/tsl_files
 
 services:
   gilsonapp:
     build: .
     image: gilsonapp:latest
     container_name: gilsonapp
+    restart: unless-stopped
     ports:
       - "8003:8003"
     command: python app.py
     volumes:
       - ./app:/usr/src/app
-      - /Users/trinhsk/Documents/GitRepos/gilson_webapp/test_files:/usr/src/app/mnt/tsl_files
+      - /Volumes/npsg/tecan/SourceData/SecondStage/Sample List_Combined_tmp:/usr/src/app/mnt/tsl_files
       - /Volumes/npsg/Gilson/RAW_UV_EXPORTS:/usr/src/app/mnt/uvdata_files
     environment:
       - PSEUDO_IPADRR=192.168.0.1
@@ -18,11 +21,10 @@ services:
       - FLASK_DEBUG=1
       - FLASK_ENV=testing
       - REDIS_URL="redis://redis:6379/0"
-    env_file:
-      - oracle_env_vars
     working_dir: /usr/src/app
     depends_on:
       - redis
+      - mongodb
 
   worker:
     image: gilsonapp
@@ -39,8 +41,9 @@ services:
 
   redis:
     image: redis:alpine
-    expose:
-      - "6379"
+    container_name: redis_container
+    ports:
+      - "6379:6379"
 
   dashboard:
     build: ./app/dashboard
@@ -51,3 +54,15 @@ services:
     command: rq-dashboard -H redis
     depends_on:
       - redis
+
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb_container
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data_container:/data/db
+    # command: mongorestore -d row_data mongodb_bkup/db_bkup/row_data
+
+volumes:
+  mongodb_data_container:
