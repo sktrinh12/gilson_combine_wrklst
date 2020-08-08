@@ -1,4 +1,12 @@
-cx_oracle
-gunicorn
-Flask
+Flask==1.1.2
+numpy==1.18.5
 pandas
+plotly
+pymongo==3.9.0
+redis
+requests
+rq==1.2.2
+urllib3==1.25.9
+Werkzeug==1.0.1
+gunicorn
+elasticsearch
