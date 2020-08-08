@@ -37,17 +37,22 @@ def main():
 
 @elasticsearch_bp.route('/es/show-current-data/<hostname>')
 def show_current_data(hostname):
-    current_row_data = [v for k, v in query_mgdb_latest(
-        app.config['MGDB_NAME'], hostname)]
-    current_ts = current_row_data[0]
-    current_sample_well = current_row_data[2]
-    current_plate_loc = current_row_data[3]
-    tsl_file_path = get_filepath(app.config['MGDB_NAME'], hostname)
+    tsl_file_path = get_filepath_mgdb(hostname)
+    current_row_data = get_latest_rowdata_mgdb(hostname)
+    try:
+        current_ts = datetime.strptime(
+            current_row_data['time'], "%m/%d/%Y %I:%M:%S %p")
+    except ValueError as e:
+        current_ts = datetime.strptime(
+            current_row_data['time'], "%Y-%b-%d %H:%M:%S")
 
-    data = prepare_row_data_ES(tsl_file_path, current_sample_well,
-                               current_plate_loc, current_ts,
+    # pass sample_name as well to assert
+    data = prepare_row_data_ES(tsl_file_path, current_row_data['sample_well'],
+                               current_row_data['plate_loc'],
+                               current_ts,
                                current_app.config['UVDATA_FILE_DIR'], hostname)
-    return jsonify(data)
+
+    return jsonify(data), 202
 
 
 @elasticsearch_bp.route('/es/post/filepath/', methods=['POST'])
