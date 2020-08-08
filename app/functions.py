@@ -4,14 +4,12 @@ import os
 from functions import *
 from flask import current_app as app
 import re
-import time
 from datetime import datetime, timedelta
 import xml.etree.ElementTree as ET
 from plotly.utils import PlotlyJSONEncoder
 import plotly.graph_objs as go
 import json
 import ntpath
-from flask import current_app as app
 
 # static variables
 REGEX_TIMESTAMP = r'(20)\d\d[- /.](0[1-9]|1[012])[- /.](0[1-9]|[12][0-9]|3[01])_\d{2}-\d{2}-\d{2}-[PA]M'
@@ -20,78 +18,6 @@ REGEX_TIMESTAMP = r'(20)\d\d[- /.](0[1-9]|1[012])[- /.](0[1-9]|[12][0-9]|3[01])_
 def path_leaf(path):
     head, tail = ntpath.split(path)
     return tail or ntpath.basename(head)
-
-
-# def bkg_task():
-#     for i in range(7, 0, -1):
-#         print(f'{i} secs left')
-#         time.sleep(1)
-#     print()
-#     print('finished')
-
-
-# def prepare_row_data(tsl_file_path, xml_log_file, uvdata_file_dir, hostname):
-#     '''print out the current running row data from raw worklist file and then
-#     repare for sql entry; this is an older version that uses txt files; NOT
-#     ORACLE TABLES
-#     Returns a list not a dictionary'''
-
-#     tsl_file_name = path_leaf(tsl_file_path)
-#     projectid = tsl_file_name.split('_', 1)[0]
-
-#     # parse XML file
-#     xml_data_row_dict, row_count = get_xml_text(
-#         ntpath.join(app.config['XML_PARENT_DIR'], xml_log_file))
-
-#     # get sample well location
-#     sw_loc = get_sample_well_loc(xml_data_row_dict, row_count)
-
-#     # get current row data
-#     current_row_list = read_tsl_file(tsl_file_path, sw_loc)
-#     current_row_dict = convert_to_dict(current_row_list)
-
-#     # convert AM/PM time to 24-hr format and with month name
-#     current_time = datetime.strptime(
-#         xml_data_row_dict[f'{row_count}_time'], orig_date_fmt).strftime('%Y-%b-%d %H:%M:%S')
-
-#     # get current uvdata csv file
-#     uvdata_file = get_current_uvdata_file(
-#         uvdata_file_dir, current_row_dict['sample_name'])
-
-#     assert current_row_dict['sample_well'] == xml_data_row_dict[f'{row_count}_sample_well'], \
-#         'sample well mis-match "{0}" does not equal "{1}"'.format(
-#             current_row_dict['sample_well'], xml_data_row_dict[f'{row_count}_sample_well'])
-
-#     # assert current_row_dict['notes'] == xml_data_row_dict[f'{row_count}_notes'], \
-#     #    'notes mis-match "{0}" does not equal "{1}"'.format(current_row_dict['notes'], xml_data_row_dict[f'{row_count}_notes'])
-
-#     assert current_row_dict['plate_loc'] == xml_data_row_dict[f'{row_count}_plate_loc'], \
-#         'plate location mis-match "{0}" does not equal "{1}"'.format(
-#             current_row_dict['plate_loc'], xml_data_row_dict[f'{row_count}_plate_loc'])
-
-#     df = pd.read_csv(os.path.join(uvdata_file_dir, uvdata_file))
-#     field_names = get_field_names(df)
-#     channel_names = get_chnl_names(df)
-#     data_dict = gen_data_dict(
-#         channel_names, sep_data_into_lists(df, channel_names))
-
-#     # with con.cursor() as cursor:
-#     row_data = [current_time,
-#                 projectid,
-#                 hostname,
-#                 current_row_dict['method_name'],
-#                 current_row_dict['sample_name'],
-#                 current_row_dict['barcode'],
-#                 current_row_dict['brooks_bc'],
-#                 current_row_dict['id_suffix'],
-#                 sw_loc,
-#                 current_row_dict['plate_loc'],
-#                 tsl_file_name,
-#                 path_leaf(xml_log_file),
-#                 path_leaf(uvdata_file),
-#                 data_dict
-#                 ]
-#     return row_data
 
 
 def create_plot(dict_data):
@@ -225,49 +151,6 @@ def create_plot(dict_data):
     return graphJSON
 
 
-def output_file_path():
-    wl_file = f'{app.root_path}/WORKLIST_FILEPATH.txt'
-    mnt_dr = '/mnt/worklist_dir'
-    wl_path = os.path.join(mnt_dr, wl_file)
-    if not os.path.exists(wl_path):
-        return wl_file
-    else:
-        return wl_path
-
-
-def convert_to_file_path(input_file_path):
-    if '/' not in input_file_path and '-' in input_file_path:
-        file_path = '/'
-        for _ in input_file_path.split('-'):
-            file_path += _ + '/'
-        return file_path[:-1]
-    else:
-        return input_file_path
-
-
-def grab_rows(fi_content_df):
-    '''Grab the valid rows from the tsl worklist file'''
-    row_idx = []
-    for i in range(fi_content_df.shape[0]):
-        try:
-            if pd.isna(fi_content_df['#Plate_Sample[True,115,13]'][i]):
-                pass  # print('nothing')
-            else:
-                row_idx.append(i)
-        except TypeError:
-            print(i)
-    return row_idx
-
-
-def split_string_input_file(input_file):
-    '''handles if contains filepath separator'''
-    if '/' in input_file:
-        input_file = input_file.split('/')[-1]
-    elif '\\' in input_file:
-        input_file = input_file.split('\\')[-1]
-    return input_file
-
-
 def extract_datetime(datetime_string):
     return datetime.strptime(re.search(REGEX_TIMESTAMP,
                                        datetime_string).group(0),
@@ -289,7 +172,7 @@ def compare_timestamp(file_name_path, xml_ts, within_time=timedelta(minutes=7)):
 
 def get_current_uvdata_file(uvdata_file_directory, sample_name, xml_ts):
     '''
-         find csv file that is within the current timestampe (today) and matches the sample name
+         find csv file that is within the current timestamp and matches the sample name
     '''
     files = [fi for fi in os.listdir(uvdata_file_directory)]
     uvdata_file_filters = [lambda x:
@@ -307,59 +190,9 @@ def get_current_uvdata_file(uvdata_file_directory, sample_name, xml_ts):
     return files[0]
 
 
-def get_newest_xmlfile(xml_file_directory):
-    '''
-        return newest file for reading/parsing
-    '''
-    files = [fi for fi in os.listdir(xml_file_directory)]
-    xml_filters = [lambda x: os.path.isfile(
-        os.path.join(xml_file_directory, x)), lambda x: x.endswith('.xml')]
-    files = list(filter(lambda x: all(
-        [f(x) for f in xml_filters]), files))
-    files = [os.path.join(xml_file_directory, f)
-             for f in files]  # add path to each file
-    files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
-    assert files, f"No XML file found with given search constraints in {xml_file_directory}"
-    return files[0]
-
-
-def get_rows_xml(root):
-    # number of rows of data - 1 for the header
-    return len([r for r in root[1][0]]) - 1
-
-
-def get_xml_text(xmlfile):
-    tree = ET.parse(xmlfile)
-    root = tree.getroot()
-    cnt_rows = get_rows_xml(root)
-    data_row_dict = dict()
-    row_line = 0
-    for row in root[1][0]:
-        data_cnt = 0
-        for cell in row:
-            if cell.items()[0][1] == "NormalStyle":
-                for data in cell:
-                    if data_cnt == 0:
-                        data_row_dict[f'{row_line}_time'] = data.text
-                    if data_cnt == 4:
-                        data_row_dict[f'{row_line}_notes'] = data.text
-                    if data_cnt == 6:
-                        data_row_dict[f'{row_line}_sample_well'] = data.text
-                    if data_cnt == 7:
-                        data_row_dict[f'{row_line}_plate_loc'] = data.text
-                data_cnt += 1
-        row_line += 1
-
-    return data_row_dict, cnt_rows
-
-
-def get_sample_well_loc(data_row_dict, cnt_rows):
-    return data_row_dict[f'{cnt_rows}_sample_well']
-
-
 def read_tsl_file(file_path, sample_well_loc):
     count = 0
-    with open(file_path, 'r') as f:
+    with open(file_path, 'r', encoding='utf-8') as f:
         while True:
             count += 1
             line = f.readline()
