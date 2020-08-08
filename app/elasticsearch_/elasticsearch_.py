@@ -24,6 +24,8 @@ def prepare_row_data_ES(tsl_file_path, sw_loc, plt_loc, current_time, uvdata_fil
     uvdata_file = get_current_uvdata_file(
         uvdata_file_dir, current_row_dict['sample_name'], current_time)
 
+    print(f"current uvdata file path: {uvdata_file}")
+
     assert current_row_dict['sample_well'] == str(sw_loc), \
         'sample well mis-match "{0}" does not equal "{1}"'.format(
             current_row_dict['sample_well'], sw_loc)
@@ -46,10 +48,13 @@ def prepare_row_data_ES(tsl_file_path, sw_loc, plt_loc, current_time, uvdata_fil
         channel_names = get_chnl_names(df)
         uvdata_dict = gen_data_dict(
             channel_names, sep_data_into_lists(df, channel_names))
+        print('uvdata file is 2019 format')
     except pd.errors.ParserError:
         # handle parse error since a different gilson export script used after
         # 2019 which places each value in separate cell and combines xy value in
         # some cells; excludes last column for data since it is x-value
+        print('uvdata file is 2020 format')
+
         dfmeta = pd.read_csv(os.path.join(uvdata_file_dir, uvdata_file),
                              nrows=25)
         dfdata = pd.read_csv(os.path.join(uvdata_file_dir, uvdata_file),
