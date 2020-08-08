@@ -13,7 +13,7 @@ def create_app():
         # bc plots are rendered client-side so have to use actual local host not
         # pseudo host (192.X.X.X) used by docker
         app.config['HOST_PLOT'] = os.getenv('HOST_PLOT')
-        app.config['HOSTNAME'] = os.getenv('PSEUDO_IPADRR')
+        app.config['HOSTNAME'] = os.getenv('PSEUDO_IPADDR')
     print(f"current ip address: {app.config['HOSTNAME']}")
     config_type = app.config['ENV'][0].upper() + app.config['ENV'][1:]
     app.config.from_object(f"config.{config_type}Config")
