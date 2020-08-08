@@ -73,12 +73,15 @@ def add_task():
         sleep_time = app.config['SLEEP_TIME']
         db_name = app.config['MGDB_DBNAME']
 
-        task = app.q.enqueue(upload_mongodb, args=(db_name,
-                                                   sleep_time, data), job_timeout=15, result_ttl=1000)
+        with Connection(redis.from_url(os.getenv('REDIS_URL'))):
+            q = Queue()
+            task = q.enqueue(upload_mongodb, args=(db_name,
+                                                   sleep_time, data),
+                             job_timeout=150, result_ttl=1000)
         # task = app.q.enqueue(upload_mongodb, args=('gilson_logs',
         #                                            10, data), job_timeout=15, result_ttl=1000)
-        jobs = app.q.jobs  # Get a list of jobs in the queue
-        q_len = len(app.q)  # Get the queue length
+        jobs = q.jobs  # Get a list of jobs in the queue
+        q_len = len(q)  # Get the queue length
         message = f"Task {task.id} queued at {task.enqueued_at.strftime('%a, %d %b %Y %H:%M:%S')}. {q_len} jobs queued"
 
     return f"message={message}, jobs={jobs}"

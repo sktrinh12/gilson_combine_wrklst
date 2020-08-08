@@ -1,7 +1,8 @@
 from flask import (Blueprint, render_template, request,
                    flash, jsonify, current_app)
 from elasticsearch_.elasticsearch_ import *
-from oracle_.oracle_ import query_ordb_curr_row, get_tsl_filepath_ordb
+from worker import Connection, redis, Queue
+from mongo_.mongo_ import *
 
 
 elasticsearch_bp = Blueprint(
@@ -16,110 +17,188 @@ def page_not_found(e):
 @elasticsearch_bp.route('/')
 @elasticsearch_bp.route('/es/index.html')
 def main():
-    output = query_ES_latest(current_app.config['ES_INDEX_NAME'], 8)
-    output = sort_colnames_ES(output)
-    print(output)
+    host = current_app.config['HOSTNAME']
+    # query on server-side
+    output = query_ES_latest(host, current_app.config['ES_INDEX_NAME'], 8)
+    if output:
+        output = sort_colnames_ES(output)
+        # print(output)
+    else:
+        notes = 'Empty ES index - {current_app.config["ES_INDEX_NAME"]}'
+        print(notes)
 
-    return render_template('elasticsearch_/index.html', output=output, notes="")
+    # if it exists, assigned from app.py init, then use that for plot rendering;
+    # query for client-side
+    if current_app.config['HOST_PLOT']:
+        host = current_app.config['HOST_PLOT']
 
-
-@elasticsearch_bp.route('/es/show-jsondata/')
-def show_jsondata():
-    '''shows the output as a json format; the `prepare_row_data` is a former
-    function that returns a list, thus `format_row_data_to_dict` will convert it
-    to a diciontary for the view'''
-    xml_file = get_newest_xmlfile('/Users/trinhsk/Documents')
-    wl_path = output_file_path()
-    with open(wl_path, 'r') as f:
-        content = f.readline().split(',')
-    tsl_file_path = content[0].strip()
-    hostname = content[1].strip()
-    print(tsl_file_path)
-    print(hostname)
-    return format_row_data_to_dict(prepare_row_data(tsl_file_path, xml_file,
-                                                    uvdata_file_dir, hostname))
+    return render_template('elasticsearch_/index.html', output=output, host=host, notes="")
 
 
-@elasticsearch_bp.route('/es/uvplot/<project_id>/<sample_well>')
+@elasticsearch_bp.route('/es/show-current-data/<hostname>')
+def show_current_data(hostname):
+    current_row_data = [v for k, v in query_mgdb_latest(
+        app.config['MGDB_NAME'], hostname)]
+    current_ts = current_row_data[0]
+    current_sample_well = current_row_data[2]
+    current_plate_loc = current_row_data[3]
+    tsl_file_path = get_filepath(app.config['MGDB_NAME'], hostname)
+
+    data = prepare_row_data_ES(tsl_file_path, current_sample_well,
+                               current_plate_loc, current_ts,
+                               current_app.config['UVDATA_FILE_DIR'], hostname)
+    return jsonify(data)
+
+
+@elasticsearch_bp.route('/es/post/filepath/', methods=['POST'])
+def post_filepath_mongodb():
+    # force mimetype to be application/json
+    input_json = None
+    input_json = request.get_json(force=True)
+    if input_json:
+        print(f'data from client-side: {input_json}')
+        check = check_gilson_nbr(
+            app.config['MGDB_FP'], input_json["gilson_number"])
+        if not check:
+            # insert into tsl file path database
+            insert_mgdb(current_app.config['MGDB_FP'], input_json)
+            print(f'inserted new tsl file path - {input_json}')
+        else:
+            update_mgdb(current_app.config['MGDB_FP'], input_json)
+            print(f'updated new tsl file path - {input_json}')
+        return jsonify({'status': f'submitted to mongodb : {input_json}'})
+
+
+@elasticsearch_bp.route('/es/post/rowdata/', methods=['POST'])
+def post_rowdata_mongodb():
+    input_json = request.get_json(force=True)
+    if input_json:
+        print(f'data from client-side: {input_json}')
+        # insert into row data (XML) database
+        insert_mgdb(current_app.config['MGDB_ROWDATA'], input_json)
+        print(f'inserted new data row - {input_json}')
+        return jsonify({'status': f'submitted to mongodb : {input_json}'})
+
+
+@elasticsearch_bp.route('/es/get/rowdata/<gilson_number>', methods=['GET'])
+def get_rowdata_mongodb(gilson_number):
+    rowdata = get_latest_rowdata_mgdb(gilson_number)
+    if rowdata:
+        print(f'retrieved data row - {rowdata}')
+        return jsonify({"output": rowdata})
+    print(f'No data retrieved for most recent run from {gilson_number}')
+    return jsonify({"output": "No data"})
+
+
+@elasticsearch_bp.route('/es/get/tslfilepath/<gilson_number>', methods=['GET'])
+def get_tslfilepath_mongodb(gilson_number):
+    tsl_filepath = get_filepath_mgdb(gilson_number)
+    if tsl_filepath:
+        print(f'retrieved tsl file path- {tsl_filepath}')
+        return jsonify({"output": tsl_filepath})
+    print(f'No filepath retrieved for {gilson_number}')
+    return jsonify({"output": "No tsl filepath"})
+
+
+@ elasticsearch_bp.route('/es/uvplot/<project_id>/<sample_well>')
 def uvplot(project_id, sample_well):
-    data_dict = query_ES_data(
-        current_app.config['ES_INDEX_NAME'], project_id, sample_well)
+    data_dict = query_ES_data(current_app.config['HOSTNAME'],
+                              current_app.config['ES_INDEX_NAME'], project_id, sample_well)
+    # print(f"brooks bc: {data_dict['brooks_bc']}")
+    # for k, v in data_dict.items():
+    #     print(k, v)
     plot = create_plot(data_dict)
     return render_template('elasticsearch_/plot.html', plot=plot, data_dict=data_dict)
 
 
-@elasticsearch_bp.route('/es/filter_proj_id', methods=["GET", "POST"])
+@ elasticsearch_bp.route('/es/filter_proj_id', methods=["GET", "POST"])
 def filter_proj_id():
     if request.method == "POST":
+        result = None
+        host = current_app.config['HOSTNAME']
         input_proj_id = request.form['filter']
-        result, output = check_ES_proj_id(
-            current_app.config['ES_INDEX_NAME'], input_proj_id)
+        result, output = check_ES_proj_id(host,
+                                          current_app.config['ES_INDEX_NAME'], input_proj_id)
+
+        if not input_proj_id:
+            # handle when not input; but click submit button
+            msg = 'No project ID entered'
+            print(msg)
+            flash(msg, 'warning')
+            return render_template('elasticsearch_/index.html', output="",
+                                   notes="Enter a valid project ID")
         if result:
             output = sort_colnames_ES(output)
-            return render_template('elasticsearch_/index.html', output=output, notes="")
+            if current_app.config['HOST_PLOT']:
+                host = current_app.config['HOST_PLOT']
+            return render_template('elasticsearch_/index.html', output=output,
+                                   host=host, notes="")
         else:
             msg = 'That project id does not exist'
             print(msg)
             flash(msg, 'warning')
             return render_template('elasticsearch_/index.html', output="")
-    return render_template('elasticsearch_/index.html', output="", notes="")
 
 
-@elasticsearch_bp.route('/es/job-results/<job_id>', methods=['GET'])
-def get_job_results(job_id):
-    job = Job.fetch(job_id, connection=conn)
-
-    if job.is_finished:
-        res_dict = {'output': f"Job Finished: {job.result}"}
-        return jsonify(res_dict), 200
+@ elasticsearch_bp.route('/es/task-results/<task_id>', methods=['GET'])
+def get_task_results(task_id):
+    task = None
+    redis_url = current_app.config['REDIS_URL'].strip().replace('"', '')
+    with Connection(redis.from_url(redis_url)):
+        q = Queue()
+        task = q.fetch_job(task_id)
+    if task:
+        res_dict = {"data": {
+            "task_id": task.get_id(),
+            "task_status": task.get_status(),
+            "task_result": f"{task.result}"
+        },
+        }
     else:
-        res_dict = {'output': f"Job not finished! - id: {job_id}"}
-        return jsonify(res_dict), 202
+        res_dict = {'status': f"Error! - task_id: {task_id}"}
+    return jsonify(res_dict), 202
 
 
-@elasticsearch_bp.route("/es/add-task/<hostname>")
+@ elasticsearch_bp.route("/es/add-task/<hostname>")
 def add_task(hostname):
-    # xml_file = get_newest_xmlfile('/Users/trinhsk/Documents')
-    # wl_path = output_file_path()
-    # with open(wl_path, 'r') as f:
-    #     content = f.readline().split(',')
-    # tsl_file_path = content[0].strip()
-    # hostname = content[1].strip()
-    tsl_file_path = get_tsl_filepath_ordb(hostname)
+    tsl_file_path = get_filepath_mgdb(hostname)
     print(f'current tsl file: {tsl_file_path}')
-    print(f'hostname: {hostname}')
-    message = None
-    current_row_data = [x for i, x in enumerate(
-        query_ordb_curr_row(hostname))]
-    current_ts = current_row_data[0]
-    # current_notes = current_row_data[1]
-    current_sample_well = current_row_data[2]
-    current_plate_loc = current_row_data[3]
-    # data = prepare_row_data_ES(tsl_file_path, xml_file,
-    #                            uvdata_file_dir, hostname)
-    data = prepare_row_data_ES(tsl_file_path, current_sample_well,
-                               current_plate_loc, current_ts,
+    # from xml/mongodb data
+    current_row_data = get_latest_rowdata_mgdb(hostname)
+    try:
+        current_ts = datetime.strptime(
+            current_row_data['time'], "%m/%d/%Y %I:%M:%S %p")
+    except ValueError as e:
+        current_ts = datetime.strptime(
+            current_row_data['time'], "%Y-%b-%d %H:%M:%S")
+
+    # pass sample_name as well to assert
+    data = prepare_row_data_ES(tsl_file_path, current_row_data['sample_well'],
+                               current_row_data['plate_loc'],
+                               current_ts,
                                current_app.config['UVDATA_FILE_DIR'], hostname)
-    # upload_data_to_ES(data)
-    # return jsonify({'output': 'upload successful'}), 200
-    # task = q.enqueue(bkg_task, job_timeout=15, result_ttl=1000)
 
     # Send a job to the task queue
     # result_ttl - specifies how long (in seconds) successful jobs and their results are kept
     index_name = current_app.config['ES_INDEX_NAME']
     sleep_time = current_app.config['SLEEP_TIME']
+    host = current_app.config['HOSTNAME']
+    redis_url = current_app.config['REDIS_URL'].strip().replace('"', '')
+    print(f'redis url from add-task endpoint: {redis_url}')
 
-    check, cnt = query_ES_dup_projid(
-        index_name, data['project_id'], data['sample_name'])
+    check, cnt = query_ES_dup_projid(host,
+                                     index_name, data['project_id'], data['sample_name'])
     print(f'check duplicate project id: {check}')
     print(f'count for duplicates: {cnt}')
     if check:
         data['project_id'] = data['project_id'] + f"_{cnt}"
-
-    task = current_app.q.enqueue(upload_data_to_ES, args=(index_name,
-                                                          sleep_time,
-                                                          data), job_timeout=15, result_ttl=1000)
-    q_len = len(current_app.q)  # Get the queue length
+    with Connection(redis.from_url(redis_url)):
+        q = Queue()
+        task = q.enqueue(upload_data_to_ES, args=(host,
+                                                  index_name,
+                                                  sleep_time,
+                                                  data), job_timeout=150, result_ttl=1000)
+    q_len = len(q)  # Get the queue length
     enq_time = task.enqueued_at.strftime('%a, %d-%b-%Y %H:%M: %S')
     message = f"""Task {task.id} queued at {enq_time}; len: {q_len} jobs queued"""
-    return jsonify({'output': message})
+    return jsonify({'output': message}), 202

@@ -27,11 +27,11 @@ function extract_proj_sw(self) {
 	return [proj_id_val, sample_well_val];
 };
 
-function popup_center(self, db_type, w, h) {
+function popup_center(self, host, db_type, w, h) {
 	let data_array = extract_proj_sw(self);
 	console.log(data_array[0]);
 	console.log(data_array[1]);
-	let url = `http://0.0.0.0:8003/${db_type}/uvplot/${data_array[0]}/${data_array[1]}`;
+	let url = `http://${host}:8003/${db_type}/uvplot/${data_array[0]}/${data_array[1]}`;
 	console.log(url);
 	var left = (screen.width / 2) - (w / 2);
 	var top = (screen.height / 2) - (h / 2);
