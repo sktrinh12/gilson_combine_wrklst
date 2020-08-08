@@ -1,5 +1,9 @@
-*instantclient-basiclite-linux.x64-19.3.0.0.0dbru.zip
-*instantclient-sdk-linux.x64-19.3.0.0.0dbru.zip
-*env_file_name
 __pycache__/
 *.tar
+*.csv
+.DS_Store
+pyscripts/*
+mongodb_bkup/*
+ipynb/*
+test_files/*
+mnt/*
