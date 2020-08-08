@@ -3,27 +3,26 @@ from elasticsearch import Elasticsearch
 
 
 class MongoDBConnection(object):
-    """MongoDB Connection"""
-
-    def __init__(self, db_name, host='localhost', port=27017):
+    def __init__(self, host, db_name, port=27017):
         self.host = host
         self.port = port
         self.db_name = db_name
+        self.client = None
         self.connection = None
-        self.connect_collection = None
 
     def __enter__(self):
-        self.connection = MongoClient(self.host, self.port)
-        return self.connection[self.db_name]
+        self.client = MongoClient(f"mongodb://{self.host}:{self.port}")
+        self.connection = self.client[self.db_name]
+        return self.connection
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.connection.close()
+        self.client.close()
 
 
 class ElasticsearchConnection(object):
     """Elasticsearch Connection"""
 
-    def __init__(self, host='localhost', port=9200):
+    def __init__(self, host, port=9200):
         self.host = host
         self.port = port
         self.connection = None
