@@ -1,0 +1,53 @@
+version: '3.7'
+
+services:
+  gilsonapp:
+    build: .
+    image: gilsonapp:latest
+    container_name: gilsonapp
+    ports:
+      - "8003:8003"
+    command: python app.py
+    volumes:
+      - ./app:/usr/src/app
+      - /Users/trinhsk/Documents/GitRepos/gilson_webapp/test_files:/usr/src/app/mnt/tsl_files
+      - /Volumes/npsg/Gilson/RAW_UV_EXPORTS:/usr/src/app/mnt/uvdata_files
+    environment:
+      - PSEUDO_IPADRR=192.168.0.1
+      - HOST_PLOT=127.0.0.1
+      - FLASK_DEBUG=1
+      - FLASK_ENV=testing
+      - REDIS_URL="redis://redis:6379/0"
+    env_file:
+      - oracle_env_vars
+    working_dir: /usr/src/app
+    depends_on:
+      - redis
+
+  worker:
+    image: gilsonapp
+    container_name: gilsonapp_worker
+    command: python worker.py
+    volumes:
+      - ./app:/usr/src/app
+    working_dir: /usr/src/app
+    environment:
+      - REDIS_URL="redis://redis:6379/0"
+      - APP_SETTINGS=config.TestingConfig
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:alpine
+    expose:
+      - "6379"
+
+  dashboard:
+    build: ./app/dashboard
+    image: dashboard
+    container_name: dashboard
+    ports:
+      - "9181:9181"
+    command: rq-dashboard -H redis
+    depends_on:
+      - redis
