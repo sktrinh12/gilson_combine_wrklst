@@ -1,0 +1,16 @@
+<br>
+<div class="col-8" id="flash-msg">
+{% with errors = get_flashed_messages(with_categories=true) %}
+  {% if errors %}
+      {%- for category, message in errors %}
+	<div>
+	      <div class="alert alert-{{category}}" role="alert">{{message }}
+	      <button onclick="close_btn(this)" type="button" class="close" aria-label="Close">
+		      <span aria-hidden="true">&times;</span>
+	      </button>
+	      </div>
+	  </div>
+      {% endfor -%}
+  {% endif %}
+{% endwith %}
+</div>
