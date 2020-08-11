@@ -112,3 +112,10 @@ input#combine-wrklst-btn, input#submit-btn {
 .tooltip > .tooltip-arrow {
     border-top: 8px solid #355681;
   }
+
+#tube-rack {
+  display: block;
+  margin-left:15%;
+  margin-right: auto;
+  width: 20%;
+}
