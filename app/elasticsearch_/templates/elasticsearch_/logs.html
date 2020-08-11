@@ -1,0 +1,61 @@
+<br>
+<div id="output">
+	<table>
+	<thead>
+		<tr>
+			<th class="tbl-hdr-logs">FINISH TIME</th>
+			<th class="tbl-hdr-logs">PROJECT ID</th>
+			<th class="tbl-hdr-logs">GILSON NUMBER</th>
+			<th class="tbl-hdr-logs">METHOD NAME</th>
+			<th class="tbl-hdr-logs">SAMPLE NAME</th>
+			<th class="tbl-hdr-logs">BARCODE</th>
+			<th class="tbl-hdr-logs">BROOKS BARCODE</th>
+			<th class="tbl-hdr-logs">PLATE SUFFIX</th>
+			<th class="tbl-hdr-logs">SAMPLE WELL</th>
+			<th class="tbl-hdr-logs">PLATE LOCATION</th>
+			<th class="tbl-hdr-logs">TSL FILE</th>
+			<th class="tbl-hdr-logs">UVDATA FILE</th>
+			<th class="tbl-hdr-logs">UV TRACE</th>
+		</tr>
+	</thead>
+	{% for ddict in output %}
+	{% set cnt = loop.index %}
+	<tr class="tbl-grp-colour-logs">
+		{% for key, value in ddict.items() %}
+		{% if key|string() == 'project_id' %}
+			<td id="project-id-group-{{ cnt }}">
+				{{ value }}
+			</td>
+		{% elif key|string() == 'sample_well' %}
+			<td id="sample-well-group-{{ cnt }}">
+				{{ value }}
+			</td>
+		{% else %}
+			<td>
+				{{ value }}
+			</td>
+		{% endif %}
+		{% endfor %}
+			<td>
+			<label for="plot-click-{{loop.index}}">
+				<img src="{{url_for('static',
+					filename='line_graph_icon.png')}}"
+					align="middle" width=50 />
+			</label>
+			<button id="plot-click-{{loop.index}}"
+				     onclick="popup_center(this, '{{host}}', 'es', 1000, 600)" class="visuallyhidden">
+			</button>
+			</td>
+	{% endfor %}
+
+	</tr>
+	</table>
+</div>
+
+<!-- <br> -->
+
+<!-- <div> -->
+<!-- 	<span id="note-div"> -->
+<!-- 		{{ notes }} -->
+<!-- 	</span> -->
+<!-- </div> -->
