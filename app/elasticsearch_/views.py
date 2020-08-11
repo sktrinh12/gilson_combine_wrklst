@@ -1,5 +1,5 @@
 from flask import (Blueprint, render_template, request,
-                   flash, jsonify, current_app)
+                   flash, jsonify, current_app, redirect)
 from elasticsearch_.elasticsearch_ import *
 from worker import Connection, redis, Queue
 from mongo_.mongo_ import *
@@ -15,7 +15,12 @@ def page_not_found(e):
 
 
 @elasticsearch_bp.route('/')
-@elasticsearch_bp.route('/es/index.html')
+def blank_main():
+    return render_template('elasticsearch_/index.html', output="",
+                           switch_var='log')
+
+
+@elasticsearch_bp.route('/es/')
 def main():
     host = current_app.config['HOSTNAME']
     # query on server-side
@@ -23,16 +28,17 @@ def main():
     if output:
         output = sort_colnames_ES(output)
         # print(output)
-    else:
-        notes = 'Empty ES index - {current_app.config["ES_INDEX_NAME"]}'
-        print(notes)
+    # else:
+    #     notes = 'Empty ES index - {current_app.config["ES_INDEX_NAME"]}'
+    #     print(notes)
 
     # if it exists, assigned from app.py init, then use that for plot rendering;
     # query for client-side
     if current_app.config['HOST_PLOT']:
         host = current_app.config['HOST_PLOT']
 
-    return render_template('elasticsearch_/index.html', output=output, host=host, notes="")
+    return render_template('elasticsearch_/index.html', output=output,
+                           host=host, switch_var='log')
 
 
 @elasticsearch_bp.route('/es/show-current-data/<hostname>')
@@ -116,7 +122,7 @@ def uvplot(project_id, sample_well):
     return render_template('elasticsearch_/plot.html', plot=plot, data_dict=data_dict)
 
 
-@ elasticsearch_bp.route('/es/filter_proj_id', methods=["GET", "POST"])
+@ elasticsearch_bp.route('/es/filter_proj_id', methods=["POST"])
 def filter_proj_id():
     if request.method == "POST":
         result = None
@@ -130,19 +136,20 @@ def filter_proj_id():
             msg = 'No project ID entered'
             print(msg)
             flash(msg, 'warning')
-            return render_template('elasticsearch_/index.html', output="",
-                                   notes="Enter a valid project ID")
+            return redirect('/')
         if result:
             output = sort_colnames_ES(output)
             if current_app.config['HOST_PLOT']:
                 host = current_app.config['HOST_PLOT']
             return render_template('elasticsearch_/index.html', output=output,
-                                   host=host, notes="")
+                                   host=host, switch_var='log')
         else:
             msg = 'That project id does not exist'
             print(msg)
             flash(msg, 'warning')
-            return render_template('elasticsearch_/index.html', output="")
+            return redirect('/')
+
+    return redirect('/')
 
 
 @ elasticsearch_bp.route('/es/task-results/<task_id>', methods=['GET'])
@@ -207,3 +214,110 @@ def add_task(hostname):
     enq_time = task.enqueued_at.strftime('%a, %d-%b-%Y %H:%M: %S')
     message = f"""Task {task.id} queued at {enq_time}; len: {q_len} jobs queued"""
     return jsonify({'output': message}), 202
+
+
+@ elasticsearch_bp.route("/es/form-combine-worklists")
+def form_combine_worklists():
+    '''bare html for redirecting if there was an issue with the submission'''
+    return render_template('elasticsearch_/combine_worklists.html',
+                           switch_var='wl', title='')
+
+
+@ elasticsearch_bp.route("/es/combine-worklists", methods=['POST'])
+def combine_worklists():
+    '''calls functions to combine two worklists based on the input entered in
+    the form'''
+
+    comb_df = pd.DataFrame()
+    # grab from ajax function in app.js
+    # input_rack_id1 = request.args.get('input_rack_id1')
+    input_rack_id1 = request.form['rack1']
+    input_rack_id2 = request.form['rack2']
+    print(f'rack1 id: {input_rack_id1}')
+    # input_rack_id2 = request.args.get('input_rack_id2')
+    print(f'rack2 id: {input_rack_id2}')
+
+    if not input_rack_id1 or not input_rack_id2:
+        msg = 'Missing rack IDs'
+        # return jsonify(dict(row_data=msg))
+        print(msg)
+        flash(msg, 'warning')
+        return redirect('/es/form-combine-worklists')
+
+    dct_df = srchmap_tslfile_dictdf([input_rack_id1, input_rack_id2],
+                                    current_app.config['TSL_FILEPATH'])
+
+    n_drive = "N:\\npsg\\tecan\SourceData\\SecondStage\\Sample Lists_Combined_tmp"
+
+    if len(dct_df) < 2 or not dct_df:
+        msg = f"Couldn't find one/both TSL file(s); check if the rack ID entered is correct or make sure the TSL file(s) is/are in {n_drive}"
+        # return jsonify(dict(row_data=msg))
+        print(msg)
+        flash(msg, 'warning')
+        return redirect('/es/form-combine-worklists')
+    #     return ('', 204)
+
+    try:
+        comb_df = main_combine_worklists(dct_df[input_rack_id1],
+                                         dct_df[input_rack_id2])
+        # print(comb_df)
+        if not comb_df.empty:
+            # return jsonify(tsl_html=render_template('elasticsearch_/tsl_view.html',
+            #                                         row_data=list(
+            #                                             comb_df.values.tolist()),
+            #                                         columns=comb_df.columns.values,
+            #                                         zip=zip))
+
+            # index columns so that the table is shorter in width
+            comb_df_for_html = comb_df.iloc[:, [1, 2, 4, 9, 10, 11]]
+            # add sequence number
+            comb_df_for_html['seq_nbr'] = [
+                i+1 for i in comb_df_for_html.index.tolist()]
+            # re-order columns
+            cols = comb_df_for_html.columns.tolist()
+            cols = cols[-1:] + cols[:-1]
+            comb_df_for_html = comb_df_for_html[cols]
+            # add css class name for group colouring
+            cls_name = comb_df['colour_css_cls'].values.tolist()
+            cls_name = ['none' if pd.isna(x) else x for x in cls_name]
+            # write to file
+            dfcsv = comb_df.iloc[:, [*range(11)]]
+            fn = f"{input_rack_id1[:8]}_{input_rack_id1[-3:]}_{input_rack_id2[-3:]}_comb.tsl"
+            # dfcsv.to_csv(os.path.join(
+            #     current_app.config['TSL_FILEPATH'], fn), sep='\t')
+            msg = f'file path of tsl file: {n_drive}\\{fn}'
+            print(msg)
+            flash(msg, 'info')
+
+            return render_template('elasticsearch_/combine_worklists.html',
+                                   row_data=list(
+                                       comb_df_for_html.values.tolist()),
+                                   columns=['SEQ NUMBER', 'METHOD NAME', 'SAMPLE NAME',
+                                            'DESCRIPTION', 'NOTES',
+                                            'SAMPLE WELL', 'PLATE SAMPLE'],
+                                   cls_name=cls_name,
+                                   title=f'Simplified version of the combined TSL file: {input_rack_id1} and {input_rack_id2}')
+    except Exception as e:
+        msg = f"An error occured combing the tsl files - {e}"
+        # return jsonify(dict(row_data=msg, columns=""))
+        print(msg)
+        flash(msg, 'warning')
+        return redirect('/es/form-combine-worklists')
+
+
+@ elasticsearch_bp.route("/es/logs")
+def show_logs():
+    '''bare html file for including into index.html or for ajax injection'''
+    host = current_app.config['HOSTNAME']
+    # query on server-side
+    output = query_ES_latest(host, current_app.config['ES_INDEX_NAME'], 8)
+    if output:
+        output = sort_colnames_ES(output)
+    # else:
+    #     notes = 'Empty ES index - {current_app.config["ES_INDEX_NAME"]}'
+    #     print(notes)
+
+    if current_app.config['HOST_PLOT']:
+        host = current_app.config['HOST_PLOT']
+    return render_template('elasticsearch_/logs.html', output=output, host=host,
+                           switch_var='log')
