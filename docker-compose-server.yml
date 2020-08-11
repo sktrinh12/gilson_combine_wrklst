@@ -11,7 +11,7 @@ services:
     command: python app.py
     volumes:
       - ./app:/usr/src/app
-      - /home/trinhsk/mnt/npsg/tecan/SourceData/SecondStage/Sample List_Combined_tmp:/usr/src/app/mnt/tsl_files
+      - /home/trinhsk/mnt/npsg/tecan/SourceData/SecondStage:/usr/src/app/mnt/tsl_files
       - /home/trinhsk/mnt/npsg/Gilson/RAW_UV_EXPORTS:/usr/src/app/mnt/uvdata_files
     environment:
       - PSEUDO_IPADDR=192.168.12.12
