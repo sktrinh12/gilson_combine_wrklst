@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import os
+from math import ceil
 from functions import *
 from flask import current_app as app
 import re
@@ -321,3 +322,141 @@ def format_row_data_to_dict(row_data):
         'uvdata'
     ]
     return {k: v for k, v in zip(key_names, row_data)}
+
+
+def srchmap_tslfile_dictdf(list_of_rack_nbrs, tslfile_dir):
+    '''search a given directory for tsl files that match rack number and store
+    pd df into dictionary'''
+    dct_df = {}
+    for rk in list_of_rack_nbrs:
+        for fi in os.listdir(tslfile_dir):
+            if re.search(fr'^{rk}', fi):
+                dct_df[rk] = pd.read_csv(
+                    os.path.join(tslfile_dir, fi), sep='\t')
+                if rk == list_of_rack_nbrs[0]:
+                    continue
+                else:
+                    break
+    return dct_df
+
+
+def find_end_idx_sw(df):
+    '''find the end index row and sample well number for the first rack'''
+    for i in range(df.shape[0]-1, 0, -1):
+        sw_value = df.loc[i, '#Sample Well[True,109,10]']
+        if sw_value != 0:
+            return i, sw_value
+
+
+def incr_plt_loc(plate_loc, incr):
+    '''increment the plate location number for combining the worklists'''
+    suffix_nbr = plate_loc[-3:]
+    curr_val = int(re.search(r'\d{2}S', plate_loc).group(0)[:2]) + incr
+    if curr_val < 10:
+        curr_val = f'0{curr_val}'
+    return f'P{curr_val}{suffix_nbr}'
+
+
+def get_end_plt_idx(df, end_idx):
+    '''get the last (ending) plate location index'''
+    plate_loc = df.loc[end_idx, '#Plate_Sample[True,115,13]']
+    return int(re.search(r'\d{2}S', plate_loc).group(0)[:2])
+
+
+def base_combine_worklists(df1, df2):
+    '''combine two worklists using pandas'''
+    sw_buffer = 0
+    # remove rows that don't have sample well number
+    df1 = df1[~df1['#Plate_Sample[True,115,13]'].isna()]
+    df2 = df2[~df2['#Plate_Sample[True,115,13]'].isna()]
+    df1.reset_index(inplace=True, drop=True)
+    df2.reset_index(inplace=True, drop=True)
+
+    row_cnt = df1.shape[0]
+    if row_cnt % 4 != 0:
+        # add to the incr counters to make sample wells in the next iteration
+        sw_buffer = 4 - (row_cnt % 4)
+
+    # new sample well starting number for second rack (df2)
+    end_idx, start_sw = find_end_idx_sw(df1)
+    print(end_idx)
+    start_sw += sw_buffer
+    incr = get_end_plt_idx(df1, end_idx)
+    print(f'incr: {incr}')
+    print(f'sw_buffer: {sw_buffer}')
+    # re-assign sample well as a increment of last sample well value from first rack (df1)
+    df2.loc[:, '#Sample Well[True,109,10]'] = df2['#Sample Well[True,109,10]'].map(
+        lambda x: x + start_sw)
+    df2.loc[:, '#Plate_Sample[True,115,13]'] = df2['#Plate_Sample[True,115,13]'].map(
+        lambda x: incr_plt_loc(x, incr))
+    df = pd.concat([df1, df2])
+    # print(df.shape)
+
+    colour_css_cls = ['tbl-colour-grp-1',
+                      'tbl-colour-grp-2']  # ['#f8f3eb', '#e0dede']
+    # make conditions for assigning colours; first get unique plate location prefixes i.e. 'P01'
+    unq_prefx_plt = df['#Plate_Sample[True,115,13]'].apply(
+        lambda x: x[:3]).unique()
+    # second, use a regex contains string to compare and get list of list of booleans that show matches
+    conditions = [df['#Plate_Sample[True,115,13]'].str.contains(
+        pl_prx) for pl_prx in unq_prefx_plt]
+    # colour assignment hex-colour (2 options) that will be selected based on the position of the condition
+    choices = colour_css_cls*int(unq_prefx_plt.shape[0]/2)
+    # np.tile(np.repeat(colour, 4), int(df.shape[0]/4/2))
+    df['colour_css_cls'] = np.select(conditions, choices, default=np.nan)
+
+    return df
+
+
+def insert_row_(row_number, df, row_value):
+    df_result = pd.DataFrame()
+    if isinstance(row_number, list):
+        for rn in row_number:
+            if not df_result.empty:
+                df = df_result
+            df1 = df[0:rn]
+            df2 = df[rn:]
+            if row_value.shape[0] > 1:
+                for i in range(row_value.shape[0]):
+                    df1.loc[rn+i] = row_value[i]
+            else:
+                df1.loc[rn] = row_value
+            df_result = pd.concat([df1, df2])
+            df_result.index = [*range(df_result.shape[0])]
+    else:
+        # if just one row number to insert at
+        df1 = df[0:row_number]
+        df2 = df[row_number:]
+        if row_value.shape[0] > 1:
+            # if multiple rows to insert
+            for i in range(row_value.shape[0]):
+                df1.loc[row_number+i] = row_value[i]
+        else:
+            df1.loc[row_number] = row_value
+        df_result = pd.concat([df1, df2])
+        df_result.index = [*range(df_result.shape[0])]
+
+    return df_result
+
+
+def main_combine_worklists(df1, df2):
+    startup_rows = df1.iloc[:3]
+    startup_rows['colour'] = np.nan
+    shutdown_rows = df1.iloc[-3:]
+    shutdown_rows['colour'] = np.nan
+    # strip flush/std/startup/shutdown for easier manipulation
+    base_df = base_combine_worklists(df1, df2)
+    # list of row index nbrs that will have the flush/6-cmpd std; multiple of 10
+    list_insert_idx = [*range(10, ceil(base_df.shape[0] / 10)*10, 10)]
+    # add 2 every iteration since that is the nbr of rows being added (shift over)
+    list_insert_idx = [i+2*e if e != 0 else i for e,
+                       i in enumerate(list_insert_idx)]
+    # add colour column
+    flush_std_rows = df1.iloc[1:3]
+    flush_std_rows['colour'] = np.nan
+    # insert flush and 6-cmpd std; index the 1st/3rd rows since 0th is startup
+    main_df = insert_row_(list_insert_idx, base_df, flush_std_rows.values)
+    # add first 3 rows add last three rows
+    main_df = pd.concat([startup_rows, main_df, shutdown_rows])
+    main_df.reset_index(drop=True, inplace=True)
+    return main_df
