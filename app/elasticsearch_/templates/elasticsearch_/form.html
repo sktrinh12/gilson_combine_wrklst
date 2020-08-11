@@ -1,0 +1,14 @@
+<br>
+<div class="row" id="input-form">
+<div class="col-10">
+<form action="/es/filter_proj_id" method="POST" class="form-inline">
+      <label for="filter">Filter by Project ID: </label>
+      <input type="text" name="filter" id="filter" data-toggle="tooltip" title="Use a barcode scanner or manually enter a project ID to filter the list" class="tooltip-cls">
+      <input type="submit" value="Submit" id="submit-btn">
+</div>
+</div>
+</form>
+
+{% include 'elasticsearch_/flash_message.html' %}
+</div>
+
