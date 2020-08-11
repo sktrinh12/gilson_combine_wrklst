@@ -9,8 +9,8 @@ from socket import gethostname
 
 # headers and url for get request & hostname
 headers = {'Content-Type': 'application/json'}
-# url = 'http://10.133.108.219:8003/'
-url = 'http://localhost:8003/'
+url = 'http://10.133.108.219:8003/'
+# url = 'http://localhost:8003/'
 hostname = gethostname()
 
 # xml var logs location & original date format
@@ -87,7 +87,7 @@ def get_xml_text(xmlfile, gilson_number=hostname):
                     if data_cnt == 2:
                         data_row_dict[f'{row_line}_method_name'] = data.text
                     if data_cnt == 3:
-                        data_row_dict[f'{row_line}_method_iterion'] = int(
+                        data_row_dict[f'{row_line}_method_iteration'] = int(
                             data.text)
                     if data_cnt == 4:
                         data_row_dict[f'{row_line}_notes'] = data.text
@@ -144,16 +144,22 @@ if __name__ == "__main__":
         res = requests.post(url+'es/post/filepath/', json=fp_dict_tosend)
         if res:
             print(f'response form server (post tsl filepath): {res.text}')
+        else:
+            print(f'no response form server (post tsl filepath)')
 
         # post row data to mongodb
         res = requests.post(url+'es/post/rowdata/', json=row_data_dict_tosend)
         if res:
             print(f'response from server (post data row): {res.text}')
+        else:
+            print(f'no response form server (post data row)')
 
         # add task to rq-redis by passing hostname
         res = requests.get(url+f'es/add-task/{hostname}', headers=headers)
         if res:
             print(f'response from server (add task to rq-redis): {res.text}')
+        else:
+            print(f'no response form server (add task to rq-redis)')
 
     else:
         raise RegistryPathDoesNotExist("The registry was not found")
