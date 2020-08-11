@@ -1,0 +1,27 @@
+{% extends 'elasticsearch_/base.html' %}
+{% block body %}
+<br>
+<div class="blank-container">
+      <div class="row">
+		<div class="col-12">
+			<form action='/es/combine-worklists' method='post'
+			id="cmb-wl-form" class="form-inline">
+				  <label for="rack1">Rack1 Code: </label>
+				  <input type="text" id="rack1" name="rack1"
+				  data-toggle="tooltip" title="Use a barcode scanner or manually type in the rack barcode/ID; starting with '15' to combine TSL worklists" class="tooltip-cls">
+				  <label for="rack2">Rack2 Code: </label>
+				  <input type="text" id="rack2" name="rack2" data-toggle="tooltip" title="Use a barcode scanner or manually type in the rack barcode/ID; starting with '15' to combine TSL worklists" class="tooltip-cls">
+				  <input type="submit" value="Submit" id="combine-wrklst-btn">
+				  <!-- onclick="inject_tsl_view()"> -->
+			</form>
+		</div>
+
+		<br>
+		<div id="tsl-panel">
+			{% include 'elasticsearch_/flash_message.html' %}
+			<br>
+			{% include 'elasticsearch_/tsl_view.html' %}
+		</div>
+      </div>
+</div>
+{% endblock %}
