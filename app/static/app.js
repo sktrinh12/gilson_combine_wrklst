@@ -1,7 +1,123 @@
-function close_btn() { //close the flash message
-	var flash_msg = document.getElementById("flash-msg");
-	flash_msg.innerHTML = "";
+function close_btn(e) { //close the flash message
+	console.log(e);
+	var parent_div = e.parentElement;
+	if (typeof (parent_div) != 'undefined' && parent_div != null) {
+		// parent_div.innerHTML = "";
+		console.log('closing flash message...');
+		parent_div.remove();
+	} else {
+		var parent_div = document.getElementById('flash-msg').children[0];
+		if (typeof (parent_div) != 'undefined' && parent_div != null) {
+			console.log('closing flash message...');
+			parent_div.remove();
+		};
+	};
 };
+
+$(document).ready(function () {
+	$('[data-toggle="tooltip"]').tooltip({
+		delay: {show: 50, hide: 100},
+		placement: "bottom",
+		effect: "fade",
+		opacity: 0.7
+	}
+	);
+});
+
+// function flash_msg(msg) {
+// 	var str_msg =
+// 		`
+// 		<div class="col-6" id="flash-msg">
+// 			<div>
+// 				<span id="warning-msg"><strong>${msg}</strong></span>
+// 				<button onclick="close_btn(this)" type="button" class="close" aria-label="Close">
+// 					<span aria-hidden="true">&times;</span>
+// 				</button>
+// 			</div>
+// 		</div>
+// 		`;
+// 	document.getElementById("tsl-panel").insertAdjacentHTML('afterbegin', str_msg);
+// };
+
+
+// function inject_tsl_view() {
+// 	var rack1 = document.forms[1]["rack1"].value;
+// 	var rack2 = document.forms[1]["rack2"].value;
+// 	console.log(rack1);
+// 	console.log(rack2);
+// 	$.ajax({
+// 		url: '/es/combine-worklists',
+// 		data: {
+// 			input_rack_id1: rack1,
+// 			input_rack_id2: rack2
+// 		},
+// 		dataType: 'json'
+// 	})
+// 		.done((res) => {
+// 			if (rack1 == "" || rack1 == null, rack2 == "" || rack2 == null) {
+// 				console.log('missing');
+// 				flash_msg(res.row_data);
+// 			} else {
+// 				document.getElementById("tsl-panel").innerHTML = res.tsl_html;
+// 			};
+// 		})
+// 		.fail((err) => {
+// 			console.log(err);
+// 		});
+// };
+
+function switch_tabs(navbar) {
+	if (navbar === $("#wl-navbar")[0]) {
+		navbar.className = "nav-link active";
+		document.getElementById("log-navbar").className = "nav-link";
+		var flash_msg_xbtn = document.getElementsByClassName("close");
+		if (typeof (flash_msg_xbtn) != 'undefined' && flash_msg_xbtn != null) {
+			console.log('closing flash msg in worklist combine tab');
+			close_btn(flash_msg_xbtn);
+		};
+	} else {
+		navbar.className = "nav-link active";
+		document.getElementById("wl-navbar").className = "nav-link";
+		var flash_msg_xbtn = document.getElementsByClassName("close");
+		if (typeof (flash_msg_xbtn) != 'undefined' && flash_msg_xbtn != null) {
+			console.log('closing flash msg in logs tab');
+			close_btn(flash_msg_xbtn);
+		};
+	};
+};
+
+// function switch_tabs(navbar, url) {
+// 	// console.log(navbar);
+// 	$.ajax({url: url})
+// 		.done((res) => {
+// 			$("#output").html(res);
+// 			if (navbar === $("#wl-navbar")[0]) {
+// 				navbar.className = "nav-link active";
+// 				document.getElementById("log-navbar").className = "nav-link";
+// 				document.getElementById("input-form").style.display = "none";
+// 				document.getElementById("submit-row").style.display = "none";
+// 				var flash_msg_xbtn = document.getElementsByClassName("close");
+// 				if (typeof (flash_msg_xbtn) != 'undefined' && flash_msg_xbtn != null) {
+// 					console.log('closing flash msg in worklist combine tab');
+// 					close_btn(flash_msg_xbtn);
+// 				};
+// 			} else {
+// 				navbar.className = "nav-link active";
+// 				document.getElementById("wl-navbar").className = "nav-link";
+// 				document.getElementById("input-form").style.display = "block";
+// 				document.getElementById("submit-row").style.display = "block";
+// 				var flash_msg_xbtn = document.getElementsByClassName("close");
+// 				if (typeof (flash_msg_xbtn) != 'undefined' && flash_msg_xbtn != null) {
+// 					console.log('closing flash msg in logs tab');
+// 					close_btn(flash_msg_xbtn);
+// 				};
+// 			};
+// 		})
+// 		.fail((err) => {
+// 			console.log(err);
+// 		});
+// };
+
 
 // remove stupid plotly logo since setting in config param didn't work
 // var list = document.getElementsByClassName('modebar modebar--hover ease-bg');
