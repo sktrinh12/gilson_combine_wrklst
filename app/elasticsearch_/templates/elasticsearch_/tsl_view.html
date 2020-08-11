@@ -1,0 +1,23 @@
+<h2>{{ title }}</h2>
+  <div>
+	<table>
+	    <thead>
+	    <tr>
+		{% for col in columns %}
+			<th class="tbl-hdr-colour">{{col}}</th>
+		{% endfor %}
+	    </tr>
+	    </thead>
+	    {% for row in row_data %}
+	    {% set outer_loop = loop.index0 %}
+		{% if cls_name[outer_loop][:3] == 'tbl' %}
+		    <tr class="{{ cls_name[outer_loop] }}">
+		{% endif %}
+		{% for r in row %}
+			<td>{{r}}</td>
+		{% endfor %}
+		    </tr>
+	    {% endfor %}
+
+	</table>
+  </div>
