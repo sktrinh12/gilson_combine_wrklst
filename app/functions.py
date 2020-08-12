@@ -205,33 +205,39 @@ def read_tsl_file(file_path, sample_well_loc):
                 break
     if not current_row_data:
         raise AttributeError(
-            f"Current sample well not found in TSL file: {sample_well_loc}")
+            f"Current sample well {sample_well_loc} not found in TSL file: {file_path} ")
     return current_row_data
 
 
 def get_current_run_row(tsl_row, sample_well_loc):
     try:
         if re.search(fr'\t(?![0]){sample_well_loc}\t', tsl_row):
-            print()
             print(f'current tsl row: {tsl_row}')
+            tsl_row = tsl_row.strip()
             return tsl_row.split('\t')[1:]
     except AttributeError:
-        print('None found')
+        print(
+            "Couldn't find current run row: tsl_row: {tsl_row}; sample_well_loc: {sample_well_loc}")
         return None
 
 
 def convert_to_dict(current_row_list):
     '''convert tab separated line from tsl file into a dictionary'''
+    print(current_row_list)
     current_row_dict = {}
-    brooks_bc, id_suffix = current_row_list[current_row_list.index(
-        '...') + 1].split('/')
+    try:
+        brooks_bc, id_suffix = current_row_list[current_row_list.index(
+            '...') + 1].split('/')
+    except ValueError as e:
+        # if no '/' in the notes
+        raise AttributeError(
+            f"The Notes column must have a '/' followed by the plate suffix in the tsl file - error msg: {e}")
     current_row_dict['method_name'] = current_row_list[0].strip()
     current_row_dict['sample_name'] = current_row_list[1].strip()
     current_row_dict['barcode'] = current_row_list[3].strip()
     current_row_dict['brooks_bc'] = brooks_bc.strip()
     current_row_dict['id_suffix'] = id_suffix.strip()
     current_row_dict['plate_loc'] = current_row_list[-1].strip()
-    #current_row_dict['notes'] = current_row_list[4]
     current_row_dict['sample_well'] = current_row_list[-2]
     return current_row_dict
 
