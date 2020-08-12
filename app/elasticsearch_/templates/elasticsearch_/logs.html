@@ -22,11 +22,11 @@
 	{% set cnt = loop.index %}
 	<tr class="tbl-grp-colour-logs">
 		{% for key, value in ddict.items() %}
-		{% if key|string() == 'project_id' %}
+		{% if key|string() == 'PROJECT_ID' %}
 			<td id="project-id-group-{{ cnt }}">
 				{{ value }}
 			</td>
-		{% elif key|string() == 'sample_well' %}
+		{% elif key|string() == 'SAMPLE_WELL' %}
 			<td id="sample-well-group-{{ cnt }}">
 				{{ value }}
 			</td>
@@ -51,11 +51,3 @@
 	</tr>
 	</table>
 </div>
-
-<!-- <br> -->
-
-<!-- <div> -->
-<!-- 	<span id="note-div"> -->
-<!-- 		{{ notes }} -->
-<!-- 	</span> -->
-<!-- </div> -->
