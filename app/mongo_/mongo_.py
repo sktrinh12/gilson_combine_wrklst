@@ -94,45 +94,46 @@ def get_latest_rowdata_mgdb(gilson_number):
     with MongoDBConnection(app.config['MGDB_CONTR'], app.config['MGDB_ROWDATA']) as db:
         res = db[gilson_number].find({}, {'_id': 0}).sort(
             [('time', DESCENDING)]).limit(1)
-        if res:
+        try:
             return res[0]
-        return None
+        except IndexError:
+            return None
 
 
-def update_mgdb(collection_name, data_dict):
-    '''update the current filepath to the tsl file'''
-    to_update = {"$set": {'tsl_filepath': data_dict['tsl_filepath']}}
-    with MongoDBConnection(app.config['MGDB_CONTR'], collection_name) as db:
-        q_data_dict = db[data_dict['gilson_number']].find(
-            {}, {'_id': 0}).limit(1)[0]
-        return db[data_dict['gilson_number']].update_one(q_data_dict, to_update)
+# def update_mgdb(collection_name, data_dict):
+#     '''update the current filepath to the tsl file'''
+#     to_update = {"$set": {'tsl_filepath': data_dict['tsl_filepath']}}
+#     with MongoDBConnection(app.config['MGDB_CONTR'], collection_name) as db:
+#         q_data_dict = db[data_dict['gilson_number']].find(
+#             {}, {'_id': 0}).limit(1)[0]
+#         return db[data_dict['gilson_number']].update_one(q_data_dict, to_update)
 
 
-def check_gilson_nbr(collection_name, gilson_number):
-    '''check if that gilson number exists; (collection name)'''
-    result = None
-    with MongoDBConnection(app.config['MGDB_CONTR'], collection_name) as db:
-        result = [cn for cn in db.list_collection_names()]
-    if gilson_number in result:
-        return True
-    return False
+# def check_gilson_nbr(collection_name, gilson_number):
+#     '''check if that gilson number exists; (collection name)'''
+#     result = None
+#     with MongoDBConnection(app.config['MGDB_CONTR'], collection_name) as db:
+#         result = [cn for cn in db.list_collection_names()]
+#     if gilson_number in result:
+#         return True
+#     return False
 
 
 def insert_mgdb(collection_name, data_dict):
-    '''insert new tsl filepath and gilson number in database'''
-    gilson_number = data_dict['gilson_number']
+    '''insert new data row & tsl filepath & gilson number in mongo database'''
+    gilson_number = data_dict['GILSON_NUMBER']
     with MongoDBConnection(app.config['MGDB_CONTR'], collection_name) as db:
-        return db[gilson_number].insert_one(data_dict).inserted_id
+        return db[gilson_number].insert_one(data_dict)  # .inserted_id
 
 
-def get_filepath_mgdb(gilson_number):
-    '''get the current tsl filepath'''
-    with MongoDBConnection(app.config['MGDB_CONTR'],
-                           app.config['MGDB_FP']) as db:
-        res = db[gilson_number].find({}, {'_id': 0}).limit(1)
-        if res:
-            return res[0]['tsl_filepath']
-        return None
+# def get_filepath_mgdb(gilson_number):
+#     '''get the current tsl filepath'''
+#     with MongoDBConnection(app.config['MGDB_CONTR'],
+#                            app.config['MGDB_ROWDATA']) as db:
+#         res = db[gilson_number].find({}, {'_id': 0}).limit(1)
+#         if res:
+#             return res[0]['tsl_filepath']
+#         return None
 
 
 def upload_mongodb(db_name, sleep_time, row_data_dict):
