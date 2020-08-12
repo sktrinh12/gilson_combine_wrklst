@@ -245,7 +245,7 @@ def combine_worklists():
         return redirect('/es/form-combine-worklists')
 
     tsl_filepath = os.path.join(
-        current_app.config['TSL_FILEPATH'], 'Sample Lists_tsl')
+        current_app.config['TSL_FILEPATH'], 'Sample List_tsl')
 
     dct_df = srchmap_tslfile_dictdf([input_rack_id1, input_rack_id2],
                                     tsl_filepath)
