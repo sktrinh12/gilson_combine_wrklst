@@ -10,6 +10,7 @@ from socket import gethostname
 # headers and url for get request & hostname
 headers = {'Content-Type': 'application/json'}
 url = 'http://10.133.108.219:8003/'
+# url = 'http://fr-s-dtp-npsg04/services/v1/chemistry/subfraction'
 # url = 'http://localhost:8003/'
 hostname = gethostname()
 
@@ -23,7 +24,27 @@ orig_date_fmt = '%Y-%b-%d %H:%M:%S'
 reg_path = r"Volatile Environment"
 reg_key_val = r"WORKLIST_FILEPATH"
 
-# mongo tables
+new_key_lst = ["FINISH_DATE",
+               "SEQ_NUM",
+               "METHOD_NAME",
+               "SAMPLE_WELL",
+               "PLATE_POSITION",
+               "GILSON_NUMBER",
+               ]
+
+
+def rename_key(iterable, old_key_lst, new_key_lst):
+    dct = {}
+    len_new_kl = len(new_key_lst)
+    len_old_kl = len(old_key_lst)
+    assert len_new_kl == len_old_kl, "key lists must be same length - old key list length : {len_old_kl}, new key list length: {len_new_kl}"
+    # for nk, ok in zip(new_key_lst, old_key_lst):
+    #     print(nk, ok)
+    if type(iterable) is dict:
+        for n_k, o_k in zip(new_key_lst, old_key_lst):
+            # iterable[n_k] = iterable.pop(o_k)
+            dct[n_k] = iterable[o_k]
+    return dct
 
 
 class RegistryPathDoesNotExist(Exception):
@@ -128,24 +149,23 @@ if __name__ == "__main__":
     row_data_dict_tosend, row_cnt = get_xml_text(xmlfile)
     # remove the 'index_' at beginning of key
     row_data_dict_tosend = {k[2:]: v for k, v in row_data_dict_tosend.items()}
-    row_data_dict_tosend['xmlfile'] = xmlfile
-    # for k, v in row_data_dict_tosend.items():
-    #     print(k, v)
+    # row_data_dict_tosend['xmlfile'] = xmlfile
+
+    # filter dict for jason's endpoint
+    for rm_keys in ['method_iteration', 'notes', 'fraction_well']:
+        row_data_dict_tosend.pop(rm_keys)
+
+    # rename key names since xml file keys differ from jason's endpoint
+    row_data_dict_tosend = rename_key(row_data_dict_tosend,
+                                      row_data_dict_tosend.keys(),
+                                      new_key_lst)
+
+    for k, v in row_data_dict_tosend.items():
+        print(k, v)
     # if check_reg_path_exists(reg_path):
     if True:
-        # fp_dict_tosend = {
-        #     'tsl_filepath': query_registry(reg_path, reg_key_val)}
-        fp_dict_tosend = {
-            'gilson_number': hostname,
-            'tsl_filepath':
-            '/Users/trinhsk/Documents/GitRepos/gilson_webapp/test_files/15_test.tsl'}
-
-        # post filepath to mongodb
-        res = requests.post(url+'es/post/filepath/', json=fp_dict_tosend)
-        if res:
-            print(f'response form server (post tsl filepath): {res.text}')
-        else:
-            print(f'no response form server (post tsl filepath)')
+        #     row_data_dict_tosend['tsl_filepath'] = query_registry(reg_path, reg_key_val)
+        row_data_dict_tosend['TSL_FILEPATH'] = '/Volumes/npsg/tecan/SourceData/SecondStage/Sample List_Combined_tmp/15200300_001_002_comb.tsl'
 
         # post row data to mongodb
         res = requests.post(url+'es/post/rowdata/', json=row_data_dict_tosend)
