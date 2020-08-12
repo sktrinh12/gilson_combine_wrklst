@@ -22,7 +22,7 @@ def path_leaf(path):
 
 
 def create_plot(dict_data):
-    df = pd.DataFrame(dict_data['uvdata'])
+    df = pd.DataFrame(dict_data['UVDATA'])
     df = change_dtype(df)
     df = shift_baseline(df)
     xs = np.linspace(0, 12.62, df.shape[0])
@@ -232,24 +232,26 @@ def convert_to_dict(current_row_list):
         # if no '/' in the notes
         raise AttributeError(
             f"The Notes column must have a '/' followed by the plate suffix in the tsl file - error msg: {e}")
-    current_row_dict['method_name'] = current_row_list[0].strip()
-    current_row_dict['sample_name'] = current_row_list[1].strip()
-    current_row_dict['barcode'] = current_row_list[3].strip()
-    current_row_dict['brooks_bc'] = brooks_bc.strip()
-    current_row_dict['id_suffix'] = id_suffix.strip()
-    current_row_dict['plate_loc'] = current_row_list[-1].strip()
-    current_row_dict['sample_well'] = current_row_list[-2]
+    current_row_dict['METHOD_NAME'] = current_row_list[0].strip()
+    current_row_dict['SAMPLE_NAME'] = current_row_list[1].strip()
+    current_row_dict['BARCODE'] = current_row_list[3].strip()
+    current_row_dict['BROOKS_BARCODE'] = brooks_bc.strip()
+    current_row_dict['PLATE_ID'] = id_suffix.strip()
+    current_row_dict['PLATE_POSITION'] = current_row_list[-1].strip()
+    current_row_dict['SAMPLE_WELL'] = current_row_list[-2]
     return current_row_dict
 
 
-def get_field_names(df):
-    field_names = ['iteration', 'sample_well', 'sample_name',
-                   'barcode', 'run_name', 'run_date', 'method_start_time']
-    field_idices = [1, 2, 3, 4, 10, 11, 12]
-    field_dict = {}
-    for i, fn in zip(field_idices, field_names):
-        field_dict[fn] = df.iloc[i].values[0].split(':', 1)[1]
-    return field_dict
+# def get_field_names(df):
+#     '''get column/field names of uv data file; set fixed field names for easy
+#     reading/accessing in othe rfunctions'''
+#     field_names = ['iteration', 'sample_well', 'sample_name',
+#                    'barcode', 'run_name', 'run_date', 'method_start_time']
+#     field_idices = [1, 2, 3, 4, 10, 11, 12]
+#     field_dict = {}
+#     for i, fn in zip(field_idices, field_names):
+#         field_dict[fn] = df.iloc[i].values[0].split(':', 1)[1]
+#     return field_dict
 
 
 def get_chnl_names(df):
