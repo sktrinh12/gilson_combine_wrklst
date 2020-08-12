@@ -11,10 +11,10 @@ services:
     command: python app.py
     volumes:
       - ./app:/usr/src/app
-      - /Users/trinhsk/Documents/GitRepos/gilson_webapp/test_files:/usr/src/app/mnt/uvdata_files
-      - /Users/trinhsk/Documents/GitRepos/gilson_webapp/test_files:/usr/src/app/mnt/tsl_files
-      # - /Volumes/npsg/tecan/SourceData/SecondStage/Sample List_Combined_tmp:/usr/src/app/mnt/tsl_files
-      # - /Volumes/npsg/Gilson/RAW_UV_EXPORTS:/usr/src/app/mnt/uvdata_files
+      # - /Users/trinhsk/Documents/GitRepos/gilson_webapp/test_files:/usr/src/app/mnt/uvdata_files
+      # - /Users/trinhsk/Documents/GitRepos/gilson_webapp/test_files:/usr/src/app/mnt/tsl_files
+      - /Volumes/npsg/tecan/SourceData/SecondStage:/usr/src/app/mnt/tsl_files
+      - /Volumes/npsg/Gilson/RAW_UV_EXPORTS:/usr/src/app/mnt/uvdata_files
     environment:
       - PSEUDO_IPADDR=192.168.1.1
       - HOST_PLOT=127.0.0.1
