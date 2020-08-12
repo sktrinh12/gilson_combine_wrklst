@@ -109,10 +109,12 @@ input#combine-wrklst-btn, input#submit-btn {
     font-size: 20;
   }
 
-.tooltip > .tooltip-arrow {
-    border-top: 8px solid #355681;
-  }
+/* tooltip arrow colour */
+.bs-tooltip-auto[x-placement^=bottom] .arrow::before, .bs-tooltip-bottom .arrow::before {
+    border-bottom-color: #355681 !important;
+}
 
+/* svg image */
 #tube-rack {
   display: block;
   margin-left:15%;
