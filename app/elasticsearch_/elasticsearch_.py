@@ -23,22 +23,22 @@ def prepare_row_data_ES(tsl_file_path, sw_loc, plt_loc, current_time, uvdata_fil
 
     # get current uvdata csv file
     uvdata_file = get_current_uvdata_file(
-        uvdata_file_dir, current_row_dict['sample_name'], current_time)
+        uvdata_file_dir, current_row_dict['SAMPLE_NAME'], current_time)
 
     print(f"current uvdata file path: {uvdata_file}")
 
-    assert current_row_dict['sample_well'] == str(sw_loc), \
+    assert current_row_dict['SAMPLE_WELL'] == str(sw_loc), \
         'sample well mis-match "{0}" does not equal "{1}"'.format(
-            current_row_dict['sample_well'], sw_loc)
+            current_row_dict['SAMPLE_WELL'], sw_loc)
 
-    assert current_row_dict['plate_loc'] == plt_loc, \
+    assert current_row_dict['PLATE_POSITION'] == plt_loc, \
         'plate location mis-match "{0}" does not equal "{1}"'.format(
-            current_row_dict['plate_loc'], plt_loc)
+            current_row_dict['PLATE_POSITION'], plt_loc)
 
     try:
         # 2019 format
         df = pd.read_csv(os.path.join(uvdata_file_dir, uvdata_file))
-        field_names = get_field_names(df)
+        # field_names = get_field_names(df)
         channel_names = get_chnl_names(df)
         uvdata_dict = gen_data_dict(
             channel_names, sep_data_into_lists(df, channel_names))
@@ -53,7 +53,7 @@ def prepare_row_data_ES(tsl_file_path, sw_loc, plt_loc, current_time, uvdata_fil
                              nrows=25)
         dfdata = pd.read_csv(os.path.join(uvdata_file_dir, uvdata_file),
                              skiprows=27, header=None, usecols=[0, 1, 2, 3])
-        field_names = get_field_names(dfmeta)
+        # field_names = get_field_names(dfmeta)
         channel_names = get_chnl_names(dfmeta)
         # convert first column to string since others have two values
         # in each cell; the solvent x-value and abs y-value
@@ -66,13 +66,13 @@ def prepare_row_data_ES(tsl_file_path, sw_loc, plt_loc, current_time, uvdata_fil
                 '\t')[1] if '\t' in x else x).astype(float).tolist()[::10])
         uvdata_dict = {ch: val for ch, val in zip(channel_names, data_list)}
 
-    row_data_keys = ['time_stamp',
-                     'project_id',
-                     'gilson_number',
-                     'sample_well',
-                     'tsl_file',
-                     'uvdata_file',
-                     'uvdata'
+    row_data_keys = ['FINISH_DATE',
+                     'PROJECT_ID',
+                     'GILSON_NUMBER',
+                     'SAMPLE_WELL',
+                     'TSL_FILEPATH',
+                     'UVDATA_FILE',
+                     'UVDATA'
                      ]
 
     row_data_vals = [current_time,
@@ -93,18 +93,18 @@ def prepare_row_data_ES(tsl_file_path, sw_loc, plt_loc, current_time, uvdata_fil
 
 def sort_colnames_ES(output):
     # master column list order for sorting
-    key_name_list = ['time_stamp',
-                     'project_id',
-                     'gilson_number',
-                     'method_name',
-                     'sample_name',
-                     'barcode',
-                     'brooks_bc',
-                     'id_suffix',
-                     'sample_well',
-                     'plate_loc',
-                     'tsl_file',
-                     'uvdata_file',
+    key_name_list = ['FINISH_DATE',
+                     'PROJECT_ID',
+                     'GILSON_NUMBER',
+                     'METHOD_NAME',
+                     'SAMPLE_NAME',
+                     'BARCODE',
+                     'BROOKS_BARCODE',
+                     'PLATE_ID',
+                     'SAMPLE_WELL',
+                     'PLATE_POSITION',
+                     'TSL_FILEPATH',
+                     'UVDATA_FILE',
                      ]
 
     sorted_output = []
@@ -155,12 +155,12 @@ def query_ES_data(host, index_name, project_id, sample_well):
                                     "must": [
                                         {
                                             "match": {
-                                                "project_id": project_id
+                                                "PROJECT_ID": project_id
                                             }
                                         },
                                         {
                                             "match": {
-                                                "sample_well": sample_well
+                                                "SAMPLE_WELL": sample_well
                                             }
                                         }
                                     ]
@@ -186,13 +186,13 @@ def query_ES_dup_projid(host, index_name, project_id, sample_name):
                                     "must": [
                                         {
                                             "wildcard": {
-                                                "project_id": f"{project_id}*"
+                                                "PROJECT_ID": f"{project_id}*"
                                             }
 
                                         },
                                         {
                                             "match": {
-                                                "sample_name": sample_name
+                                                "SAMPLE_NAME": sample_name
                                             }
                                         }
 
@@ -221,7 +221,7 @@ def check_ES_proj_id(host, index_name, project_id):
                     "must": [
                         {
                             "wildcard": {
-                                "project_id": f"{project_id}*"
+                                "PROJECT_ID": f"{project_id}*"
                             }
                         },
                     ]
@@ -240,7 +240,7 @@ def query_ES_latest(host, index_name, n_latest):
         with ElasticsearchConnection(host=host) as es:
             res = es.search(index=index_name, body={
                 "_source": {
-                    "excludes": ["uvdata"]
+                    "excludes": ["UVDATA"]
                 },
 
                 "query": {
@@ -249,7 +249,7 @@ def query_ES_latest(host, index_name, n_latest):
                 "size": n_latest,
                 "sort": [
                     {
-                        "time_stamp": {
+                        "FINISH_DATE": {
                             "order": "desc"
                         }
                     }
