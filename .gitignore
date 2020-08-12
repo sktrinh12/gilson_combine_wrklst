@@ -7,3 +7,4 @@ mongodb_bkup/*
 ipynb/*
 test_files/*
 mnt/*
+views_v1.py
