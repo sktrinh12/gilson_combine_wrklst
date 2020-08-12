@@ -9,13 +9,11 @@ from socket import gethostname
 
 # headers and url for get request & hostname
 headers = {'Content-Type': 'application/json'}
-url = 'http://10.133.108.219:8003/'
-# url = 'http://fr-s-dtp-npsg04/services/v1/chemistry/subfraction'
-# url = 'http://localhost:8003/'
+# url = 'http://10.133.108.219:8003/'
+url = 'http://localhost:8003/'
 hostname = gethostname()
 
 # xml var logs location & original date format
-# xml_file_directory = 'C:\\Users\\Tanja\\Documents\\TRILUTION LC 3.0\\Export\\Variable Logs\\'
 # orig_date_fmt = '%m/%d/%Y %I:%M:%S %p'
 xml_file_directory = '/Users/trinhsk/Documents/'
 orig_date_fmt = '%Y-%b-%d %H:%M:%S'
@@ -160,26 +158,17 @@ if __name__ == "__main__":
                                       row_data_dict_tosend.keys(),
                                       new_key_lst)
 
-    for k, v in row_data_dict_tosend.items():
-        print(k, v)
-    # if check_reg_path_exists(reg_path):
+    # for k, v in row_data_dict_tosend.items():
+    #     print(k, v)
     if True:
-        #     row_data_dict_tosend['tsl_filepath'] = query_registry(reg_path, reg_key_val)
         row_data_dict_tosend['TSL_FILEPATH'] = '/Volumes/npsg/tecan/SourceData/SecondStage/Sample List_Combined_tmp/15200300_001_002_comb.tsl'
 
-        # post row data to mongodb
-        res = requests.post(url+'es/post/rowdata/', json=row_data_dict_tosend)
-        if res:
+        try:
+            res = requests.post(url+'es/post/rowdata/',
+                                json=row_data_dict_tosend)
             print(f'response from server (post data row): {res.text}')
-        else:
-            print(f'no response form server (post data row)')
-
-        # add task to rq-redis by passing hostname
-        res = requests.get(url+f'es/add-task/{hostname}', headers=headers)
-        if res:
-            print(f'response from server (add task to rq-redis): {res.text}')
-        else:
-            print(f'no response form server (add task to rq-redis)')
+        except requests.exceptions.RequestException as e:
+            print(f'no response form server (post data row) - {e}')
 
     else:
         raise RegistryPathDoesNotExist("The registry was not found")
