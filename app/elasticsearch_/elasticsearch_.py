@@ -13,7 +13,8 @@ def prepare_row_data_ES(tsl_file_path, sw_loc, plt_loc, current_time, uvdata_fil
     tsl_file_name = path_leaf(tsl_file_path)
     projectid = tsl_file_name.split('_', 1)[0]
 
-    tsl_file_path = os.path.join(app.config['TSL_FILEPATH'], tsl_file_name)
+    tsl_file_path = os.path.join(
+        app.config['TSL_FILEPATH'], 'Sample Lists_Combined_tmp', tsl_file_name)
     print(f"new tsl file path: {tsl_file_path}")
 
     # get current row data
@@ -30,16 +31,9 @@ def prepare_row_data_ES(tsl_file_path, sw_loc, plt_loc, current_time, uvdata_fil
         'sample well mis-match "{0}" does not equal "{1}"'.format(
             current_row_dict['sample_well'], sw_loc)
 
-    # assert current_row_dict['notes'] == notes\
-    #    'notes mis-match "{0}" does not equal "{1}"'.format(current_row_dict['notes'], notes)
-
     assert current_row_dict['plate_loc'] == plt_loc, \
         'plate location mis-match "{0}" does not equal "{1}"'.format(
             current_row_dict['plate_loc'], plt_loc)
-
-    # assert current_row_dict['sample_name'] == sample_name, \
-    #     'sample name mis-match "{0}" does not equal "{1}"'.format(
-    #         current_row_dict['sample_name'], sample_name)
 
     try:
         # 2019 format
@@ -127,8 +121,6 @@ def get_index_length(host, index_name):
 
 
 def upload_data_to_ES(host, index_name, sleep_time, row_data_dict):
-    # idx_adder = get_index_length(index_name)
-    # print(f"_id of newly added data: {idx_adder+1}")
     res = {'result': 'empty', '_id': 'empty'}
     for i in range(sleep_time, 0, -1):
         if i % 5 == 0:

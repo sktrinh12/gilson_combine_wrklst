@@ -244,30 +244,25 @@ def combine_worklists():
         flash(msg, 'warning')
         return redirect('/es/form-combine-worklists')
 
+    tsl_filepath = os.path.join(
+        current_app.config['TSL_FILEPATH'], 'Sample Lists_tsl')
+
     dct_df = srchmap_tslfile_dictdf([input_rack_id1, input_rack_id2],
-                                    current_app.config['TSL_FILEPATH'])
+                                    tsl_filepath)
 
     n_drive = "N:\\npsg\\tecan\SourceData\\SecondStage\\Sample Lists_Combined_tmp"
 
     if len(dct_df) < 2 or not dct_df:
         msg = f"Couldn't find one/both TSL file(s); check if the rack ID entered is correct or make sure the TSL file(s) is/are in {n_drive}"
-        # return jsonify(dict(row_data=msg))
         print(msg)
         flash(msg, 'warning')
         return redirect('/es/form-combine-worklists')
-    #     return ('', 204)
 
     try:
         comb_df = main_combine_worklists(dct_df[input_rack_id1],
                                          dct_df[input_rack_id2])
         # print(comb_df)
         if not comb_df.empty:
-            # return jsonify(tsl_html=render_template('elasticsearch_/tsl_view.html',
-            #                                         row_data=list(
-            #                                             comb_df.values.tolist()),
-            #                                         columns=comb_df.columns.values,
-            #                                         zip=zip))
-
             # index columns so that the table is shorter in width
             comb_df_for_html = comb_df.iloc[:, [1, 2, 4, 9, 10, 11]]
             # add sequence number
@@ -283,8 +278,8 @@ def combine_worklists():
             # write to file
             dfcsv = comb_df.iloc[:, [*range(11)]]
             fn = f"{input_rack_id1[:8]}_{input_rack_id1[-3:]}_{input_rack_id2[-3:]}_comb.tsl"
-            # dfcsv.to_csv(os.path.join(
-            #     current_app.config['TSL_FILEPATH'], fn), sep='\t')
+            dfcsv.to_csv(os.path.join(
+                current_app.config['TSL_FILEPATH'], 'Sample Lists_Combined_tmp', fn), sep='\t')
             msg = f'file path of tsl file: {n_drive}\\{fn}'
             print(msg)
             flash(msg, 'info')
