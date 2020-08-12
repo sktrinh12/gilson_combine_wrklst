@@ -14,7 +14,7 @@ def prepare_row_data_ES(tsl_file_path, sw_loc, plt_loc, current_time, uvdata_fil
     projectid = tsl_file_name.split('_', 1)[0]
 
     tsl_file_path = os.path.join(
-        app.config['TSL_FILEPATH'], 'Sample Lists_Combined_tmp', tsl_file_name)
+        app.config['TSL_FILEPATH'], 'Sample List_Combined_tmp', tsl_file_name)
     print(f"new tsl file path: {tsl_file_path}")
 
     # get current row data

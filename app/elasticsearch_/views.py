@@ -250,7 +250,7 @@ def combine_worklists():
     dct_df = srchmap_tslfile_dictdf([input_rack_id1, input_rack_id2],
                                     tsl_filepath)
 
-    n_drive = "N:\\npsg\\tecan\SourceData\\SecondStage\\Sample Lists_Combined_tmp"
+    n_drive = "N:\\npsg\\tecan\SourceData\\SecondStage\\Sample List_Combined_tmp"
 
     if len(dct_df) < 2 or not dct_df:
         msg = f"Couldn't find one/both TSL file(s); check if the rack ID entered is correct or make sure the TSL file(s) is/are in {n_drive}"
@@ -279,7 +279,7 @@ def combine_worklists():
             dfcsv = comb_df.iloc[:, [*range(11)]]
             fn = f"{input_rack_id1[:8]}_{input_rack_id1[-3:]}_{input_rack_id2[-3:]}_comb.tsl"
             dfcsv.to_csv(os.path.join(
-                current_app.config['TSL_FILEPATH'], 'Sample Lists_Combined_tmp', fn), sep='\t')
+                current_app.config['TSL_FILEPATH'], 'Sample List_Combined_tmp', fn), sep='\t')
             msg = f'file path of tsl file: {n_drive}\\{fn}'
             print(msg)
             flash(msg, 'info')
