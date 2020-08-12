@@ -24,13 +24,10 @@ def blank_main():
 def main():
     host = current_app.config['HOSTNAME']
     # query on server-side
+    output = ""
     output = query_ES_latest(host, current_app.config['ES_INDEX_NAME'], 8)
     if output:
         output = sort_colnames_ES(output)
-        # print(output)
-    # else:
-    #     notes = 'Empty ES index - {current_app.config["ES_INDEX_NAME"]}'
-    #     print(notes)
 
     # if it exists, assigned from app.py init, then use that for plot rendering;
     # query for client-side
@@ -43,55 +40,64 @@ def main():
 
 @elasticsearch_bp.route('/es/show-current-data/<hostname>')
 def show_current_data(hostname):
-    tsl_file_path = get_filepath_mgdb(hostname)
+    # tsl_file_path = get_filepath_mgdb(hostname)
     current_row_data = get_latest_rowdata_mgdb(hostname)
+    tsl_file_path = current_row_data['TSL_FILEPATH']
     try:
         current_ts = datetime.strptime(
-            current_row_data['time'], "%m/%d/%Y %I:%M:%S %p")
+            current_row_data['FINISH_DATE'], "%m/%d/%Y %I:%M:%S %p")
     except ValueError as e:
         current_ts = datetime.strptime(
-            current_row_data['time'], "%Y-%b-%d %H:%M:%S")
+            current_row_data['FINISH_DATE'], "%Y-%b-%d %H:%M:%S")
 
     # pass sample_name as well to assert
-    data = prepare_row_data_ES(tsl_file_path, current_row_data['sample_well'],
-                               current_row_data['plate_loc'],
+    data = prepare_row_data_ES(tsl_file_path, current_row_data['SAMPLE_WELL'],
+                               current_row_data['PLATE_POSITION'],
                                current_ts,
                                current_app.config['UVDATA_FILE_DIR'], hostname)
 
     return jsonify(data), 202
 
 
-@elasticsearch_bp.route('/es/post/filepath/', methods=['POST'])
-def post_filepath_mongodb():
-    # force mimetype to be application/json
-    input_json = None
-    input_json = request.get_json(force=True)
-    if input_json:
-        print(f'data from client-side: {input_json}')
-        check = check_gilson_nbr(
-            app.config['MGDB_FP'], input_json["gilson_number"])
-        if not check:
-            # insert into tsl file path database
-            insert_mgdb(current_app.config['MGDB_FP'], input_json)
-            print(f'inserted new tsl file path - {input_json}')
-        else:
-            update_mgdb(current_app.config['MGDB_FP'], input_json)
-            print(f'updated new tsl file path - {input_json}')
-        return jsonify({'status': f'submitted to mongodb : {input_json}'})
+# @elasticsearch_bp.route('/es/post/filepath/', methods=['POST'])
+# def post_filepath_mongodb():
+#     # force mimetype to be application/json
+#     input_json = None
+#     input_json = request.get_json(force=True)
+#     if input_json:
+#         print(f'data from client-side: {input_json}')
+#         check = check_gilson_nbr(
+#             app.config['MGDB_FP'], input_json["gilson_number"])
+#         if not check:
+#             # insert into tsl file path database
+#             insert_mgdb(current_app.config['MGDB_FP'], input_json)
+#             print(f'inserted new tsl file path - {input_json}')
+#         else:
+#             update_mgdb(current_app.config['MGDB_FP'], input_json)
+#             print(f'updated new tsl file path - {input_json}')
+#         return jsonify({'status': f'submitted to mongodb', input_json)
 
 
 @elasticsearch_bp.route('/es/post/rowdata/', methods=['POST'])
 def post_rowdata_mongodb():
+    '''includes both filepath and the xml row data (combined into one post
+    request)'''
+    input_json = None
+    # force mimetype to be application/json
     input_json = request.get_json(force=True)
+    print(f'data from client-side: {input_json}')
+
     if input_json:
-        print(f'data from client-side: {input_json}')
-        # insert into row data (XML) database
+        # insert into row data (XML & filepath) database
         insert_mgdb(current_app.config['MGDB_ROWDATA'], input_json)
         print(f'inserted new data row - {input_json}')
-        return jsonify({'status': f'submitted to mongodb : {input_json}'})
+        # must remove '_id' key since it is not json serialisable
+        input_json.pop('_id')
+        return jsonify({'status': f'submitted to mongodb', 'data': input_json})
+    return jsonify({'status': f'error'})
 
 
-@elasticsearch_bp.route('/es/get/rowdata/<gilson_number>', methods=['GET'])
+@ elasticsearch_bp.route('/es/get/rowdata/<gilson_number>', methods=['GET'])
 def get_rowdata_mongodb(gilson_number):
     rowdata = get_latest_rowdata_mgdb(gilson_number)
     if rowdata:
@@ -101,14 +107,14 @@ def get_rowdata_mongodb(gilson_number):
     return jsonify({"output": "No data"})
 
 
-@elasticsearch_bp.route('/es/get/tslfilepath/<gilson_number>', methods=['GET'])
-def get_tslfilepath_mongodb(gilson_number):
-    tsl_filepath = get_filepath_mgdb(gilson_number)
-    if tsl_filepath:
-        print(f'retrieved tsl file path- {tsl_filepath}')
-        return jsonify({"output": tsl_filepath})
-    print(f'No filepath retrieved for {gilson_number}')
-    return jsonify({"output": "No tsl filepath"})
+# @ elasticsearch_bp.route('/es/get/tslfilepath/<gilson_number>', methods=['GET'])
+# def get_tslfilepath_mongodb(gilson_number):
+#     tsl_filepath = get_filepath_mgdb(gilson_number)
+#     if tsl_filepath:
+#         print(f'retrieved tsl file path- {tsl_filepath}')
+#         return jsonify({"output": tsl_filepath})
+#     print(f'No filepath retrieved for {gilson_number}')
+#     return jsonify({"output": "No tsl filepath"})
 
 
 @ elasticsearch_bp.route('/es/uvplot/<project_id>/<sample_well>')
@@ -173,20 +179,20 @@ def get_task_results(task_id):
 
 @ elasticsearch_bp.route("/es/add-task/<hostname>")
 def add_task(hostname):
-    tsl_file_path = get_filepath_mgdb(hostname)
-    print(f'current tsl file: {tsl_file_path}')
-    # from xml/mongodb data
+    # tsl_file_path = get_filepath_mgdb(hostname)
     current_row_data = get_latest_rowdata_mgdb(hostname)
+    tsl_file_path = current_row_data['TSL_FILEPATH']
+
+    print(f'current tsl file: {tsl_file_path}')
     try:
         current_ts = datetime.strptime(
-            current_row_data['time'], "%m/%d/%Y %I:%M:%S %p")
+            current_row_data['FINISH_DATE'], "%m/%d/%Y %I:%M:%S %p")
     except ValueError as e:
         current_ts = datetime.strptime(
-            current_row_data['time'], "%Y-%b-%d %H:%M:%S")
+            current_row_data['FINISH_DATE'], "%Y-%b-%d %H:%M:%S")
 
-    # pass sample_name as well to assert
-    data = prepare_row_data_ES(tsl_file_path, current_row_data['sample_well'],
-                               current_row_data['plate_loc'],
+    data = prepare_row_data_ES(tsl_file_path, current_row_data['SAMPLE_WELL'],
+                               current_row_data['PLATE_POSITION'],
                                current_ts,
                                current_app.config['UVDATA_FILE_DIR'], hostname)
 
@@ -275,11 +281,13 @@ def combine_worklists():
             # add css class name for group colouring
             cls_name = comb_df['colour_css_cls'].values.tolist()
             cls_name = ['none' if pd.isna(x) else x for x in cls_name]
-            # write to file
-            dfcsv = comb_df.iloc[:, [*range(11)]]
+            # write to file without the table colour group css class
+            dfcsv = comb_df.iloc[:, [*range(comb_df.shape[1]-1)]]
             fn = f"{input_rack_id1[:8]}_{input_rack_id1[-3:]}_{input_rack_id2[-3:]}_comb.tsl"
+            # dfcsv.replace({r'\r\n': ''}, regex=True, inplace=True)
             dfcsv.to_csv(os.path.join(
-                current_app.config['TSL_FILEPATH'], 'Sample List_Combined_tmp', fn), sep='\t')
+                current_app.config['TSL_FILEPATH'], 'Sample List_Combined_tmp',
+                fn), sep='\t', index=False)
             msg = f'file path of tsl file: {n_drive}\\{fn}'
             print(msg)
             flash(msg, 'info')
