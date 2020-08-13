@@ -41,28 +41,31 @@ def main():
 @elasticsearch_bp.route('/es/show-current-data/<hostname>')
 def show_current_data(hostname):
     # tsl_file_path = get_filepath_mgdb(hostname)
+    # returns None if cannot find in mgdb
     current_row_data = get_latest_rowdata_mgdb(hostname)
-    tsl_file_path = current_row_data['TSL_FILEPATH']
-    try:
-        current_ts = datetime.strptime(
-            current_row_data['FINISH_DATE'], "%m/%d/%Y %I:%M:%S %p")
-    except ValueError as e:
-        current_ts = datetime.strptime(
-            current_row_data['FINISH_DATE'], "%Y-%b-%d %H:%M:%S")
 
-    # pass sample_name as well to assert
-    data = prepare_row_data_ES(tsl_file_path, current_row_data['SAMPLE_WELL'],
-                               current_row_data['PLATE_POSITION'],
-                               current_row_data['SEQ_NUM'],
-                               current_ts,
-                               current_app.config['UVDATA_FILE_DIR'], hostname)
+    if current_row_data:
+        tsl_file_path = current_row_data['TSL_FILEPATH']
+        try:
+            current_ts = datetime.strptime(
+                current_row_data['FINISH_DATE'], "%m/%d/%Y %I:%M:%S %p")
+        except ValueError as e:
+            current_ts = datetime.strptime(
+                current_row_data['FINISH_DATE'], "%Y-%b-%d %H:%M:%S")
 
-    data = sort_dictkeys(data)
-    for k, v in data.items():
-        print(k, v)
+        data = prepare_row_data_ES(tsl_file_path, current_row_data['SAMPLE_WELL'],
+                                   current_row_data['PLATE_POSITION'],
+                                   current_row_data['SEQ_NUM'],
+                                   current_ts,
+                                   current_app.config['UVDATA_FILE_DIR'], hostname)
 
-    return jsonify(data), 202
+        data = sort_dictkeys(data)
+        # for k, v in data.items():
+        #     print(k, v)
 
+        return jsonify(data), 202
+
+    return jsonify({'output': f'No data retrieved for {hostname}'})
 
 # @elasticsearch_bp.route('/es/post/filepath/', methods=['POST'])
 # def post_filepath_mongodb():
@@ -98,7 +101,10 @@ def post_rowdata_mongodb():
         # values into mgongodb
         for empty_keys in ["PROJECT_ID", "SAMPLE_NAME", "BARCODE",
                            "PLATE_ID", "BROOKS_BARCODE"]:
-            input_json.pop(empty_keys)
+            try:
+                input_json.pop(empty_keys)
+            except KeyError:
+                pass
         # insert row data (XML & filepath) to database
         insert_mgdb(current_app.config['MGDB_ROWDATA'], input_json)
         print(f'inserted new data row - {input_json}')
@@ -198,6 +204,7 @@ def filter_proj_id():
             flash(msg, 'warning')
             return redirect('/')
         if result:
+            print(output)
             output = sort_colnames_ES(output)
             if current_app.config['HOST_PLOT']:
                 host = current_app.config['HOST_PLOT']
