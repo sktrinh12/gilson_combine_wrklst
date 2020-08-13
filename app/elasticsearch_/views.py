@@ -53,8 +53,13 @@ def show_current_data(hostname):
     # pass sample_name as well to assert
     data = prepare_row_data_ES(tsl_file_path, current_row_data['SAMPLE_WELL'],
                                current_row_data['PLATE_POSITION'],
+                               current_row_data['SEQ_NUM'],
                                current_ts,
                                current_app.config['UVDATA_FILE_DIR'], hostname)
+
+    data = sort_dictkeys(data)
+    for k, v in data.items():
+        print(k, v)
 
     return jsonify(data), 202
 
@@ -88,7 +93,13 @@ def post_rowdata_mongodb():
     print(f'data from client-side: {input_json}')
 
     if input_json:
-        # insert into row data (XML & filepath) database
+        # must remove empty fields that are requisite for NPSG endpoint
+        # (gateway so that vlans can communicate to linux VM); dont upload empty
+        # values into mgongodb
+        for empty_keys in ["PROJECT_ID", "SAMPLE_NAME", "BARCODE",
+                           "PLATE_ID", "BROOKS_BARCODE"]:
+            input_json.pop(empty_keys)
+        # insert row data (XML & filepath) to database
         insert_mgdb(current_app.config['MGDB_ROWDATA'], input_json)
         print(f'inserted new data row - {input_json}')
         # must remove '_id' key since it is not json serialisable
@@ -104,9 +115,12 @@ def post_rowdata_mongodb():
 
         data = prepare_row_data_ES(input_json['TSL_FILEPATH'], input_json['SAMPLE_WELL'],
                                    input_json['PLATE_POSITION'],
+                                   input_json['SEQ_NUM'],
                                    current_ts,
                                    current_app.config['UVDATA_FILE_DIR'],
                                    input_json['GILSON_NUMBER'])
+        # for server response
+        data_no_uvdata = {k: data[k] for k in data.keys() - {'UVDATA'}}
 
         # Send a job to the task queue
         # result_ttl - specifies how long (in seconds) successful jobs and their results are kept
@@ -132,7 +146,8 @@ def post_rowdata_mongodb():
         q_len = len(q)  # Get the queue length
         enq_time = task.enqueued_at.strftime('%a, %d-%b-%Y %H:%M: %S')
         message = f"""Task {task.id} queued at {enq_time}; len: {q_len} jobs queued"""
-        return jsonify({'output': message, 'data': input_json}), 202
+        # return jsonify({'output': message, 'data': input_json}), 202
+        return jsonify({'output': message, 'data': data_no_uvdata}), 202
     return jsonify({'status': f'error'})
 
 
@@ -207,13 +222,13 @@ def get_task_results(task_id):
     if task:
         res_dict = {"data": {
             "task_id": task.get_id(),
-            "task_status": task.get_status(),
             "task_function": task.func_name,
+            "task_exc_info": task.exc_info,
             "task_enqueue_time": task.enqueued_at,
             "task_start_time": task.started_at,
             "task_end_time": task.ended_at,
-            "task_exc_info": task.exc_info,
-            "task_result": task.result
+            "task_result": task.result,
+            "task_status": task.get_status()
         },
         }
     else:
