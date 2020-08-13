@@ -158,8 +158,13 @@ if __name__ == "__main__":
                                       row_data_dict_tosend.keys(),
                                       new_key_lst)
 
+    for empty_keys in ["PROJECT_ID", "SAMPLE_NAME", "BARCODE",
+                       "PLATE_ID", "BROOKS_BARCODE"]:
+        row_data_dict_tosend[empty_keys] = None
+
     # for k, v in row_data_dict_tosend.items():
     #     print(k, v)
+
     if True:
         row_data_dict_tosend['TSL_FILEPATH'] = '/Volumes/npsg/tecan/SourceData/SecondStage/Sample List_Combined_tmp/15200300_001_002_comb.tsl'
 
