@@ -223,7 +223,7 @@ def query_ES_dup_projid(host, index_name, project_id, sample_name):
                         )
     # return res['hits']['hits'][0]['_source']
     cnt = int(res['hits']['total']['value'])
-    if cnt > 1:
+    if cnt >= 1:
         return True, cnt + 1
     else:
         return False, 0
