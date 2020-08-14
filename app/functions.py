@@ -13,7 +13,8 @@ import json
 import ntpath
 
 # static variables
-REGEX_TIMESTAMP = r'(20)\d\d[- /.](0[1-9]|1[012])[- /.](0[1-9]|[12][0-9]|3[01])_\d{2}-\d{2}-\d{2}-[PA]M'
+# REGEX_TIMESTAMP = r'(20)\d\d[- /.](0[1-9]|1[012])[- /.](0[1-9]|[12][0-9]|3[01])_\d{2}-\d{2}-\d{2}-[PA]M'
+REGEX_TIMESTAMP = r'(20\d\d[-](0[1-9]|1[012])[-]\d{2})(.*)(\d{2}-\d{2}-\d{2}-[PA]M)'
 
 
 def path_leaf(path):
@@ -153,15 +154,29 @@ def create_plot(dict_data):
 
 
 def extract_datetime(datetime_string):
+    '''extract the finish time which is at the end of the file name; have to cut
+    it up and then concatenate'''
     print(f'UVDATA file datetime string: {datetime_string}')
     try:
-        return datetime.strptime(re.search(REGEX_TIMESTAMP,
-                                           datetime_string).group(0),
-                                 '%Y-%m-%d_%I-%M-%S-%p')
+        regex_time = re.search(REGEX_TIMESTAMP, datetime_string)
+        the_date = regex_time.group(1)
+        finish_time = regex_time.group(4)
+        return datetime.strptime(f'{the_date}_{finish_time}', '%Y-%m-%d_%I-%M-%S-%p')
     except AttributeError as e:
         print(
             f'problem extracting date format from uvfile string: {datetime_string} - {e}')
         return None
+
+# def extract_datetime(datetime_string):
+#     print(f'UVDATA file datetime string: {datetime_string}')
+#     try:
+#         return datetime.strptime(re.search(REGEX_TIMESTAMP,
+#                                            datetime_string).group(0),
+#                                  '%Y-%m-%d_%I-%M-%S-%p')
+#     except AttributeError as e:
+#         print(
+#             f'problem extracting date format from uvfile string: {datetime_string} - {e}')
+#         return None
 
 
 def compare_timestamp(file_name_path, xml_ts, within_time=timedelta(minutes=7)):
