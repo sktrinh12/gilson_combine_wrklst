@@ -153,9 +153,15 @@ def create_plot(dict_data):
 
 
 def extract_datetime(datetime_string):
-    return datetime.strptime(re.search(REGEX_TIMESTAMP,
-                                       datetime_string).group(0),
-                             '%Y-%m-%d_%I-%M-%S-%p')
+    print(f'UVDATA file datetime string: {datetime_string}')
+    try:
+        return datetime.strptime(re.search(REGEX_TIMESTAMP,
+                                           datetime_string).group(0),
+                                 '%Y-%m-%d_%I-%M-%S-%p')
+    except AttributeError as e:
+        print(
+            f'problem extracting date format from uvfile string: {datetime_string} - {e}')
+        return None
 
 
 def compare_timestamp(file_name_path, xml_ts, within_time=timedelta(minutes=7)):
@@ -163,12 +169,15 @@ def compare_timestamp(file_name_path, xml_ts, within_time=timedelta(minutes=7)):
     # the xml file is ahead by 5ish minutes bc set in method to log the data at
     # 5ish minutes, so will be higher than the uvdata time stamp
     uvdata_ts = extract_datetime(file_name_path)
-    td = xml_ts - uvdata_ts
-    print(f"xml ts: {xml_ts} - uv ts: {uvdata_ts}")
-    if td > within_time:
-        return False, td
+    if uvdata_ts:
+        td = xml_ts - uvdata_ts
+        print(f"xml ts: {xml_ts} - uv ts: {uvdata_ts}")
+        if td > within_time:
+            return False, td
+        else:
+            return True, td
     else:
-        return True, td
+        return False, None
 
 
 def get_current_uvdata_file(uvdata_file_directory, sample_name, xml_ts):
@@ -182,13 +191,25 @@ def get_current_uvdata_file(uvdata_file_directory, sample_name, xml_ts):
         [f(x) for f in uvdata_file_filters]), files))
     assert files, f"Did not find {sample_name} uv data .csv file in directory:{uvdata_file_directory}"
 
-    check_file_ts = compare_timestamp(
-        os.path.join(uvdata_file_directory, files[0]), xml_ts)
-    print(f'check file ts: {check_file_ts[0]}; {check_file_ts[1]}')
-    # assert check_file_ts[0] == True, \
-    #     'raw uv-data file is older by {0} than the allowed timeframe; is it the correct file? - sample name:"{1}" questionable file: "{2}"'.format(
-    #     str(check_file_ts[1]), sample_name, files[0])
-    return files[0]
+    if len(files) > 1:
+        for each_fi in files:
+            check_file_ts = compare_timestamp(
+                os.path.join(uvdata_file_directory, each_fi), xml_ts)
+            if check_file_ts[0]:
+                select_file = each_fi
+                print(f'check file ts: {check_file_ts[0]}; {check_file_ts[1]}')
+                break
+    else:
+        check_file_ts = compare_timestamp(
+            os.path.join(uvdata_file_directory, files[0]), xml_ts)
+        print(f'check file ts: {check_file_ts[0]}; {check_file_ts[1]}')
+        select_file = files[0]
+
+    assert check_file_ts[0] == True, \
+        'raw uv-data file is older by {0} than the allowed timeframe; is it the correct file? - sample name:"{1}" questionable file: "{2}"'.format(
+        str(check_file_ts[1]), sample_name, select_file)
+
+    return select_file
 
 
 def read_tsl_file(file_path, sample_well_loc):
