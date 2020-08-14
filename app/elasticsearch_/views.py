@@ -86,7 +86,7 @@ def show_current_data(hostname):
 #         return jsonify({'status': f'submitted to mongodb', input_json)
 
 
-@elasticsearch_bp.route('/es/post/rowdata/', methods=['POST'])
+@elasticsearch_bp.route('/es/post/rowdata', methods=['POST'])
 def post_rowdata_mongodb():
     '''includes both filepath and the xml row data (combined into one post
     request)'''
@@ -111,7 +111,8 @@ def post_rowdata_mongodb():
         # must remove '_id' key since it is not json serialisable
         input_json.pop('_id')
 
-        print(f'current tsl file: {input_json["TSL_FILEPATH"]}')
+        print(
+            f'current tsl file (from post view): {input_json["TSL_FILEPATH"]}')
         try:
             current_ts = datetime.strptime(
                 input_json['FINISH_DATE'], "%m/%d/%Y %I:%M:%S %p")
@@ -138,8 +139,9 @@ def post_rowdata_mongodb():
 
         check, cnt = query_ES_dup_projid(host,
                                          index_name, data['PROJECT_ID'], data['SAMPLE_NAME'])
-        print(f'check duplicate project id: {check}')
-        print(f'count for duplicates: {cnt}')
+        print(f"check duplicate project id: {data['PROJECT_ID']} - {check}")
+        print(
+            f"count for duplicates: {cnt} based on sample_name {data['SAMPLE_NAME']}")
         if check:
             data['PROJECT_ID'] = data['PROJECT_ID'] + f"_{cnt}"
 
@@ -182,8 +184,8 @@ def uvplot(project_id, sample_well):
     data_dict = query_ES_data(current_app.config['HOSTNAME'],
                               current_app.config['ES_INDEX_NAME'], project_id, sample_well)
     # print(f"brooks bc: {data_dict['brooks_bc']}")
-    # for k, v in data_dict.items():
-    #     print(k, v)
+    for k in data_dict.keys():
+        print(k)
     plot = create_plot(data_dict)
     return render_template('elasticsearch_/plot.html', plot=plot, data_dict=data_dict)
 
