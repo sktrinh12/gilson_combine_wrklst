@@ -12,6 +12,8 @@ def prepare_row_data_ES(tsl_file_path, sw_loc, plt_loc, seq_nbr, current_time, u
     # ntpath can handle both windows ntpath and unix posixpath
     tsl_file_name = path_leaf(tsl_file_path)
     projectid = tsl_file_name.split('_', 1)[0]
+    # make copy of the real path passed from the post request
+    real_tsl_filepath = tsl_file_path
 
     tsl_file_path = os.path.join(
         app.config['TSL_FILEPATH'], 'Sample List_Combined_tmp', tsl_file_name)
@@ -83,7 +85,7 @@ def prepare_row_data_ES(tsl_file_path, sw_loc, plt_loc, seq_nbr, current_time, u
                      projectid,
                      hostname,
                      sw_loc,
-                     tsl_file_name,
+                     real_tsl_filepath,
                      path_leaf(uvdata_file),
                      uvdata_dict
                      ]
@@ -118,7 +120,7 @@ def sort_dictkeys(dct, incl_uvdata=False):
     ]
 
     if incl_uvdata:
-        key_name_list + ['UVDATA']
+        key_name_list = key_name_list + ['UVDATA']
 
     dct_ = {k: dct[k] for k in key_name_list}
     return dct_
@@ -223,7 +225,7 @@ def query_ES_dup_projid(host, index_name, project_id, sample_name):
                         )
     # return res['hits']['hits'][0]['_source']
     cnt = int(res['hits']['total']['value'])
-    if cnt >= 1:
+    if cnt != 0:
         return True, cnt + 1
     else:
         return False, 0
@@ -236,6 +238,7 @@ def check_ES_proj_id(host, index_name, project_id):
             "_source": {
                 "excludes":  ["UVDATA"]
             },
+            "size": 1000,
             "query": {
                 "bool": {
                     "must": [
@@ -246,7 +249,14 @@ def check_ES_proj_id(host, index_name, project_id):
                         },
                     ]
                 }
-            }
+            },
+            "sort": [
+                {
+                    "FINISH_DATE": {
+                        "order": "desc"
+                    }
+                }
+            ]
         }
         )
     output = res['hits']
