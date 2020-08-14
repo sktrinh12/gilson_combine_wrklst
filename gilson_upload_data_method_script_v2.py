@@ -9,8 +9,8 @@ from random import randint
 
 # headers and url for get request & hostname
 headers = {'Content-Type': 'application/json'}
-# url = 'http://10.133.108.219:8003/'
-url = 'http://localhost:8003/'
+url = 'http://10.133.108.219:8003/'
+# url = 'http://localhost:8003/'
 # hostname = gethostname()
 hostname = f'GILSON_{randint(1,8)}'
 
@@ -43,50 +43,82 @@ def rename_key(iterable, old_key_lst, new_key_lst):
     return dct
 
 
-def get_rows_xml(root):
-    # number of rows of data - 1 for the header
-    return len([r for r in root[1][0]]) - 1
-
-
 def get_xml_text(xmlfile, gilson_number=hostname):
     tree = ET.parse(xmlfile)
     root = tree.getroot()
-    cnt_rows = get_rows_xml(root)
     data_row_dict = dict()
-    row_line = 0
-    for row in root[1][0]:
-        data_cnt = 0
-        for cell in row:
-            if cell.items()[0][1] == "NormalStyle":
-                for data in cell:
-                    if data_cnt == 0:
-                        # have to convert to string bc cannot json serialise
-                        # datetime object
-                        data_row_dict[f'{row_line}_time'] = datetime.strptime(
+    ws = root.find('{urn:schemas-microsoft-com:office:spreadsheet}Worksheet')
+    row_cnt = 0
+    for i, rw in enumerate(ws[0]):  # table
+        if i == 0:  # skip the header
+            pass
+        else:
+            row_cnt += 1
+            for j, cell in enumerate(rw):  # each cell of row
+                for data in cell:  # each data value of cell
+                    if j == 0:
+                        data_row_dict[f'{i}_time'] = datetime.strptime(
                             data.text, orig_date_fmt).strftime('%Y-%b-%d %H:%M:%S')
-                    if data_cnt == 1:
-                        data_row_dict[f'{row_line}_sample_line'] = int(
+                    if j == 1:
+                        data_row_dict[f'{i}_sample_line'] = int(
                             data.text)
-                    if data_cnt == 2:
-                        data_row_dict[f'{row_line}_method_name'] = data.text
-                    if data_cnt == 3:
-                        data_row_dict[f'{row_line}_method_iteration'] = int(
+                    if j == 2:
+                        data_row_dict[f'{i}_method_name'] = data.text
+                    if j == 3:
+                        data_row_dict[f'{i}_method_iteration'] = int(
                             data.text)
-                    if data_cnt == 4:
-                        data_row_dict[f'{row_line}_notes'] = data.text
-                    if data_cnt == 5:
-                        data_row_dict[f'{row_line}_sample_well'] = int(
+                    if j == 4:
+                        data_row_dict[f'{i}_notes'] = data.text
+                    if j == 5:
+                        data_row_dict[f'{i}_sample_well'] = int(
                             data.text)
-                    if data_cnt == 6:
-                        data_row_dict[f'{row_line}_fraction_well'] = int(
+                    if j == 6:
+                        data_row_dict[f'{i}_fraction_well'] = int(
                             data.text)
-                    if data_cnt == 7:
-                        data_row_dict[f'{row_line}_plate_loc'] = data.text
-                        data_row_dict[f'{row_line}_gilson_number'] = gilson_number
-                data_cnt += 1
-        row_line += 1
+                    if j == 7:
+                        data_row_dict[f'{i}_plate_loc'] = data.text
+                        data_row_dict[f'{i}_gilson_number'] = gilson_number
+    return data_row_dict, row_cnt
 
-    return data_row_dict, cnt_rows
+# def get_xml_text(xmlfile, gilson_number=hostname):
+#     tree = ET.parse(xmlfile)
+#     root = tree.getroot()
+#     cnt_rows = get_rows_xml(root)
+#     data_row_dict = dict()
+#     row_line = 0
+#     for row in root[1][0]:
+#         data_cnt = 0
+#         for cell in row:
+#             if cell.items()[0][1] == "NormalStyle":
+#                 for data in cell:
+#                     if data_cnt == 0:
+#                         # have to convert to string bc cannot json serialise
+#                         # datetime object
+#                         data_row_dict[f'{row_line}_time'] = datetime.strptime(
+#                             data.text, orig_date_fmt).strftime('%Y-%b-%d %H:%M:%S')
+#                     if data_cnt == 1:
+#                         data_row_dict[f'{row_line}_sample_line'] = int(
+#                             data.text)
+#                     if data_cnt == 2:
+#                         data_row_dict[f'{row_line}_method_name'] = data.text
+#                     if data_cnt == 3:
+#                         data_row_dict[f'{row_line}_method_iteration'] = int(
+#                             data.text)
+#                     if data_cnt == 4:
+#                         data_row_dict[f'{row_line}_notes'] = data.text
+#                     if data_cnt == 5:
+#                         data_row_dict[f'{row_line}_sample_well'] = int(
+#                             data.text)
+#                     if data_cnt == 6:
+#                         data_row_dict[f'{row_line}_fraction_well'] = int(
+#                             data.text)
+#                     if data_cnt == 7:
+#                         data_row_dict[f'{row_line}_plate_loc'] = data.text
+#                         data_row_dict[f'{row_line}_gilson_number'] = gilson_number
+#                 data_cnt += 1
+#         row_line += 1
+
+    # return data_row_dict, cnt_rows
 
 
 def get_newest_xmlfile(xml_file_directory):
@@ -128,12 +160,12 @@ if __name__ == "__main__":
 
     row_data_dict_tosend['TSL_FILEPATH'] = '/Volumes/npsg/tecan/SourceData/SecondStage/Sample List_Combined_tmp/1578_test.tsl'
 
-    # for k, v in row_data_dict_tosend.items():
-    #     print(k, v)
+    for k, v in row_data_dict_tosend.items():
+        print(k, v)
 
-    try:
-        res = requests.post(url+'es/post/rowdata',
-                            json=row_data_dict_tosend)
-        print(f'response from server (post data row): {res.text}')
-    except requests.exceptions.RequestException as e:
-        print(f'no response form server (post data row) - {e}')
+    # try:
+    #     res = requests.post(url+'es/post/rowdata',
+    #                         json=row_data_dict_tosend)
+    #     print(f'response from server (post data row): {res.text}')
+    # except requests.exceptions.RequestException as e:
+    #     print(f'no response form server (post data row) - {e}')
