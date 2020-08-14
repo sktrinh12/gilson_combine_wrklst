@@ -1,26 +1,24 @@
 import xml.etree.ElementTree as ET
 import requests
-# import winreg
 import re
 import os
 from datetime import datetime
-from socket import gethostname
+# from socket import gethostname
+from random import randint
 
 
 # headers and url for get request & hostname
 headers = {'Content-Type': 'application/json'}
 # url = 'http://10.133.108.219:8003/'
 url = 'http://localhost:8003/'
-hostname = gethostname()
+# hostname = gethostname()
+hostname = f'GILSON_{randint(1,8)}'
 
 # xml var logs location & original date format
-# orig_date_fmt = '%m/%d/%Y %I:%M:%S %p'
-xml_file_directory = '/Users/trinhsk/Documents/'
-orig_date_fmt = '%Y-%b-%d %H:%M:%S'
-
-# registry paths to get tsl file path
-reg_path = r"Volatile Environment"
-reg_key_val = r"WORKLIST_FILEPATH"
+orig_date_fmt = '%m/%d/%Y %I:%M:%S %p'
+# xml_file_directory = '/Users/trinhsk/Documents/'
+xml_file_directory = '/Volumes/npsg/Gilson/Scripts/'
+# orig_date_fmt = '%Y-%b-%d %H:%M:%S'
 
 new_key_lst = ["FINISH_DATE",
                "SEQ_NUM",
@@ -43,40 +41,6 @@ def rename_key(iterable, old_key_lst, new_key_lst):
             # iterable[n_k] = iterable.pop(o_k)
             dct[n_k] = iterable[o_k]
     return dct
-
-
-class RegistryPathDoesNotExist(Exception):
-    """Raised when the windows registry couldn't be found"""
-    pass
-
-
-def query_registry(reg_path, reg_key_val):
-    access_registry = winreg.ConnectRegistry(
-        None, winreg.HKEY_CURRENT_USER)  # If None, the local computer is used
-    access_key = winreg.OpenKey(access_registry, reg_path)
-
-    # Read the value.
-    result = winreg.QueryValueEx(access_key, reg_key_val)
-
-    # Close the handle object.
-    winreg.CloseKey(access_key)
-    print(f'>>>registry filepath read: {result[0]}')
-
-    # Return only the value from the resulting tuple (value, type_as_int).
-    return result[0]
-
-
-def check_reg_path_exists(reg_path):
-    access_registry = winreg.ConnectRegistry(
-        None, winreg.HKEY_CURRENT_USER)  # If None, the local computer is used
-    try:
-        access_key = winreg.OpenKey(access_registry, reg_path)
-        winreg.CloseKey(access_key)
-        print(f'>>>registry path exists: {reg_path}')
-        return True
-    except EnvironmentError:
-        print(f'>>>registry path does not exists: {reg_path}')
-        return False
 
 
 def get_rows_xml(root):
@@ -144,10 +108,10 @@ def get_newest_xmlfile(xml_file_directory):
 
 if __name__ == "__main__":
     xmlfile = get_newest_xmlfile(xml_file_directory)
+    print(xmlfile)
     row_data_dict_tosend, row_cnt = get_xml_text(xmlfile)
     # remove the 'index_' at beginning of key
     row_data_dict_tosend = {k[2:]: v for k, v in row_data_dict_tosend.items()}
-    # row_data_dict_tosend['xmlfile'] = xmlfile
 
     # filter dict for jason's endpoint
     for rm_keys in ['method_iteration', 'notes', 'fraction_well']:
@@ -162,18 +126,14 @@ if __name__ == "__main__":
                        "PLATE_ID", "BROOKS_BARCODE"]:
         row_data_dict_tosend[empty_keys] = None
 
+    row_data_dict_tosend['TSL_FILEPATH'] = '/Volumes/npsg/tecan/SourceData/SecondStage/Sample List_Combined_tmp/1578_test.tsl'
+
     # for k, v in row_data_dict_tosend.items():
     #     print(k, v)
 
-    if True:
-        row_data_dict_tosend['TSL_FILEPATH'] = '/Volumes/npsg/tecan/SourceData/SecondStage/Sample List_Combined_tmp/15200300_001_002_comb.tsl'
-
-        try:
-            res = requests.post(url+'es/post/rowdata/',
-                                json=row_data_dict_tosend)
-            print(f'response from server (post data row): {res.text}')
-        except requests.exceptions.RequestException as e:
-            print(f'no response form server (post data row) - {e}')
-
-    else:
-        raise RegistryPathDoesNotExist("The registry was not found")
+    try:
+        res = requests.post(url+'es/post/rowdata',
+                            json=row_data_dict_tosend)
+        print(f'response from server (post data row): {res.text}')
+    except requests.exceptions.RequestException as e:
+        print(f'no response form server (post data row) - {e}')
