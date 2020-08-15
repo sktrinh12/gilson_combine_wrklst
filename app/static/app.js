@@ -14,7 +14,9 @@ function close_btn(e) { //close the flash message
 	};
 };
 
-$(document).ready(function () {
+// $(document).ready(function () {
+var form = document.getElementById('input-form');
+if (form !== null) {
 	$('[data-toggle="tooltip"]').tooltip({
 		delay: {show: 50, hide: 100},
 		placement: "bottom",
@@ -22,7 +24,7 @@ $(document).ready(function () {
 		opacity: 0.7
 	}
 	);
-});
+};
 
 // function flash_msg(msg) {
 // 	var str_msg =
