@@ -196,8 +196,8 @@ def filter_proj_id():
         result = None
         host = current_app.config['HOSTNAME']
         input_proj_id = request.form['filter']
-        result, output = check_ES_proj_id(host,
-                                          current_app.config['ES_INDEX_NAME'], input_proj_id)
+        result, output = check_ES_proj_id(
+            host, current_app.config['ES_INDEX_NAME'], input_proj_id)
 
         if not input_proj_id:
             # handle when not input; but click submit button
