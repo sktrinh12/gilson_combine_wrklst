@@ -53,19 +53,22 @@ def prepare_row_data_ES(tsl_file_path, sw_loc, plt_loc, seq_nbr, current_time, u
 
         dfmeta = pd.read_csv(os.path.join(uvdata_file_dir, uvdata_file),
                              nrows=25)
+        valid_cols = check_pd_usecols(uvdata_file_dir, uvdata_file)
         dfdata = pd.read_csv(os.path.join(uvdata_file_dir, uvdata_file),
-                             skiprows=27, header=None, usecols=[0, 1, 2, 3])
-        # field_names = get_field_names(dfmeta)
+                             skiprows=27, header=None, usecols=valid_cols)
         channel_names = get_chnl_names(dfmeta)
         # convert first column to string since others have two values
         # in each cell; the solvent x-value and abs y-value
-        dfdata[0] = dfdata[0].astype(str)
+        # dfdata[0] = dfdata[0].astype(str)
+
+        channel_names = channel_names + ['TIME']
         data_list = list()
         # split each value and convert back to float; and index every 10 values
-        # to reduce sampling rate
+        # to reduce sampling rate; splitting is done since some uvdata files
+        # are tab separated within a cell (y and x value in one cell)
         for c in dfdata.columns:
-            data_list.append(dfdata[c].apply(lambda x: x.split(
-                '\t')[1] if '\t' in x else x).astype(float).tolist()[::10])
+            data_list.append(dfdata[c].apply(lambda x: str(x).split(
+                '\t')[1] if '\t' in str(x) else x).astype(float).tolist()[::10])
         uvdata_dict = {ch: val for ch, val in zip(channel_names, data_list)}
 
     # combine two dictionaries (1) is from current row in tsl file; (2) other is xml
@@ -124,6 +127,23 @@ def sort_dictkeys(dct, incl_uvdata=False):
 
     dct_ = {k: dct[k] for k in key_name_list}
     return dct_
+
+
+def check_pd_usecols(uvdata_file_dir, uvdata_file):
+    '''iterate from 0 - 3 to see which columns are valid (have a value) to avoid parse errors'''
+    use_cols_nbr = []
+    for i in range(5):
+        dfdata = pd.DataFrame()
+        try:
+            dfdata = pd.read_csv(os.path.join(uvdata_file_dir, uvdata_file),
+                                 skiprows=27, nrows=1, header=None, usecols=[i])
+            if not dfdata.empty:
+                use_cols_nbr.append(i)
+        except (pd.errors.ParserError, ValueError):
+            pass
+
+    print(f'valid uvdata colms for {uvdata_file}: {use_cols_nbr}')
+    return use_cols_nbr
 
 
 def sort_colnames_ES(output):
@@ -233,36 +253,39 @@ def query_ES_dup_projid(host, index_name, project_id, sample_name):
 
 def check_ES_proj_id(host, index_name, project_id):
     '''check if project id exists using wildcard search query and output the result'''
-    with ElasticsearchConnection(host=host) as es:
-        res = es.search(index=index_name, body={
-            "_source": {
-                "excludes":  ["UVDATA"]
-            },
-            "size": 1000,
-            "query": {
-                "bool": {
-                    "must": [
-                        {
-                            "wildcard": {
-                                "PROJECT_ID": f"{project_id}*"
-                            }
-                        },
-                    ]
-                }
-            },
-            "sort": [
-                {
-                    "FINISH_DATE": {
-                        "order": "desc"
+    try:
+        with ElasticsearchConnection(host=host) as es:
+            res = es.search(index=index_name, body={
+                "_source": {
+                    "excludes":  ["UVDATA"]
+                },
+                "size": 1000,
+                "query": {
+                    "bool": {
+                        "must": [
+                            {
+                                "wildcard": {
+                                    "PROJECT_ID": f"{project_id}*"
+                                }
+                            },
+                        ]
                     }
-                }
-            ]
-        }
-        )
-    output = res['hits']
-    if int(output['total']['value']) > 0:
-        return True, [r['_source'] for r in output['hits']]
-    return False, None
+                },
+                "sort": [
+                    {
+                        "FINISH_DATE": {
+                            "order": "desc"
+                        }
+                    }
+                ]
+            }
+            )
+        output = res['hits']
+        if int(output['total']['value']) > 0:
+            return True, [r['_source'] for r in output['hits']]
+        return False, None
+    except exceptions.RequestError:
+        return False, None
 
 
 def query_ES_latest(host, index_name, n_latest):
