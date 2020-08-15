@@ -3,22 +3,19 @@ import requests
 import re
 import os
 from datetime import datetime
-# from socket import gethostname
 from random import randint
 
 
 # headers and url for get request & hostname
 headers = {'Content-Type': 'application/json'}
-url = 'http://10.133.108.219:8003/'
-# url = 'http://localhost:8003/'
-# hostname = gethostname()
+# url = 'http://10.133.108.219:8003/'
+url = 'http://localhost:8003/'
 hostname = f'GILSON_{randint(1,8)}'
 
 # xml var logs location & original date format
 orig_date_fmt = '%m/%d/%Y %I:%M:%S %p'
-# xml_file_directory = '/Users/trinhsk/Documents/'
-xml_file_directory = '/Volumes/npsg/Gilson/Scripts/'
-# orig_date_fmt = '%Y-%b-%d %H:%M:%S'
+# xml_file_directory = '/Volumes/npsg/Gilson/Scripts/test_xmls'
+xml_file_directory = '/Volumes/npsg/Gilson/Scripts'
 
 new_key_lst = ["FINISH_DATE",
                "SEQ_NUM",
@@ -140,12 +137,11 @@ def get_newest_xmlfile(xml_file_directory):
 
 if __name__ == "__main__":
     xmlfile = get_newest_xmlfile(xml_file_directory)
-    print(xmlfile)
     row_data_dict_tosend, row_cnt = get_xml_text(xmlfile)
     # remove the 'index_' at beginning of key
     row_data_dict_tosend = {k[2:]: v for k, v in row_data_dict_tosend.items()}
 
-    # filter dict for jason's endpoint
+    # filter dict for NPSG's endpoint
     for rm_keys in ['method_iteration', 'notes', 'fraction_well']:
         row_data_dict_tosend.pop(rm_keys)
 
@@ -154,18 +150,18 @@ if __name__ == "__main__":
                                       row_data_dict_tosend.keys(),
                                       new_key_lst)
 
-    for empty_keys in ["PROJECT_ID", "SAMPLE_NAME", "BARCODE",
-                       "PLATE_ID", "BROOKS_BARCODE"]:
-        row_data_dict_tosend[empty_keys] = None
+    # for empty_keys in ["PROJECT_ID", "SAMPLE_NAME", "BARCODE",
+    #                    "PLATE_ID", "BROOKS_BARCODE"]:
+    #     row_data_dict_tosend[empty_keys] = None
 
     row_data_dict_tosend['TSL_FILEPATH'] = '/Volumes/npsg/tecan/SourceData/SecondStage/Sample List_Combined_tmp/1578_test.tsl'
 
     for k, v in row_data_dict_tosend.items():
         print(k, v)
 
-    # try:
-    #     res = requests.post(url+'es/post/rowdata',
-    #                         json=row_data_dict_tosend)
-    #     print(f'response from server (post data row): {res.text}')
-    # except requests.exceptions.RequestException as e:
-    #     print(f'no response form server (post data row) - {e}')
+    try:
+        res = requests.post(url+'es/post/rowdata',
+                            json=row_data_dict_tosend)
+        print(f'response from server (post data row): {res.text}')
+    except requests.exceptions.RequestException as e:
+        print(f'no response form server (post data row) - {e}')
