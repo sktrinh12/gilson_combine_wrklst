@@ -27,6 +27,8 @@ def create_plot(dict_data):
     df = change_dtype(df)
     df = shift_baseline(df)
     xs = np.linspace(0, 12.62, df.shape[0])
+    # exclude the last column (time)
+    df = df.iloc[:, :df.shape[1]-1]
     data = list()
 
     for cn in df.columns:
@@ -206,6 +208,7 @@ def get_current_uvdata_file(uvdata_file_directory, sample_name, xml_ts):
         [f(x) for f in uvdata_file_filters]), files))
     assert files, f"Did not find {sample_name} uv data .csv file in directory:{uvdata_file_directory}"
 
+    overnight_run = False
     if len(files) > 1:
         for each_fi in files:
             check_file_ts = compare_timestamp(
@@ -214,15 +217,19 @@ def get_current_uvdata_file(uvdata_file_directory, sample_name, xml_ts):
                 select_file = each_fi
                 print(f'check file ts: {check_file_ts[0]}; {check_file_ts[1]}')
                 break
+            # if none match up by time, default to first in list (only if run before midnight and finish after)
+            overnight_run = True
+            select_file = files[0]
     else:
         check_file_ts = compare_timestamp(
             os.path.join(uvdata_file_directory, files[0]), xml_ts)
         print(f'check file ts: {check_file_ts[0]}; {check_file_ts[1]}')
         select_file = files[0]
 
-    assert check_file_ts[0] == True, \
-        'raw uv-data file is older by {0} than the allowed timeframe; is it the correct file? - sample name:"{1}" questionable file: "{2}"'.format(
-        str(check_file_ts[1]), sample_name, select_file)
+    if not overnight_run:
+        assert check_file_ts[0] == True, \
+            'raw uv-data file is older by {0} than the allowed timeframe; is it the correct file? - sample name:"{1}" questionable file: "{2}"'.format(
+            str(check_file_ts[1]), sample_name, select_file)
 
     return select_file
 
