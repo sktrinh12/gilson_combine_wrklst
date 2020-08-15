@@ -188,7 +188,7 @@ def compare_timestamp(file_name_path, xml_ts, within_time=timedelta(minutes=7)):
     uvdata_ts = extract_datetime(file_name_path)
     if uvdata_ts:
         td = xml_ts - uvdata_ts
-        print(f"xml ts: {xml_ts} - uv ts: {uvdata_ts}")
+        print(f"xml ts: {xml_ts} - uv ts: {uvdata_ts} | diff: {td}")
         if td > within_time:
             return False, td
         else:
@@ -218,8 +218,12 @@ def get_current_uvdata_file(uvdata_file_directory, sample_name, xml_ts):
                 print(f'check file ts: {check_file_ts[0]}; {check_file_ts[1]}')
                 break
             # if none match up by time, default to first in list (only if run before midnight and finish after)
+        if "select_file" not in locals():
+            # if loop did not find a file that meets compare_timestamp criterion
             overnight_run = True
             select_file = files[0]
+            print(
+                f'the uvdata file was defaulted to most recent in directory: {files[0]} - most likely an overnight run')
     else:
         check_file_ts = compare_timestamp(
             os.path.join(uvdata_file_directory, files[0]), xml_ts)
