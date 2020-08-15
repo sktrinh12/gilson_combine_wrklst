@@ -27,7 +27,7 @@ def prepare_row_data_ES(tsl_file_path, sw_loc, plt_loc, seq_nbr, current_time, u
     uvdata_file = get_current_uvdata_file(
         uvdata_file_dir, current_row_dict['SAMPLE_NAME'], current_time)
 
-    print(f"current uvdata file path: {uvdata_file}")
+    print(f"current uvdata file: {uvdata_file}")
 
     assert current_row_dict['SAMPLE_WELL'] == str(sw_loc), \
         'sample well mis-match "{0}" does not equal "{1}"'.format(
@@ -84,7 +84,7 @@ def prepare_row_data_ES(tsl_file_path, sw_loc, plt_loc, seq_nbr, current_time, u
                      ]
 
     row_data_vals = [current_time,
-                     seq_nbr,
+                     str(int(float(seq_nbr))),
                      projectid,
                      hostname,
                      sw_loc,
