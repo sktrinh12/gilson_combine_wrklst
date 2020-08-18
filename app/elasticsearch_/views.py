@@ -105,6 +105,7 @@ def post_rowdata_mongodb():
                 input_json.pop(empty_keys)
             except KeyError:
                 pass
+
         # insert row data (XML & filepath) to database
         insert_mgdb(current_app.config['MGDB_ROWDATA'], input_json)
         print(f'inserted new data row - {input_json}')
@@ -113,21 +114,17 @@ def post_rowdata_mongodb():
 
         print(
             f'current tsl file (from post view): {input_json["TSL_FILEPATH"]}')
-        try:
-            current_ts = datetime.strptime(
-                input_json['FINISH_DATE'], "%m/%d/%Y %I:%M:%S %p")
-        except ValueError as e:
-            current_ts = datetime.strptime(
-                input_json['FINISH_DATE'], "%Y-%b-%d %H:%M:%S")
 
-        data = prepare_row_data_ES(input_json['TSL_FILEPATH'], input_json['SAMPLE_WELL'],
-                                   input_json['PLATE_POSITION'],
-                                   input_json['SEQ_NUM'],
-                                   current_ts,
-                                   current_app.config['UVDATA_FILE_DIR'],
-                                   input_json['GILSON_NUMBER'])
-        # for server response
-        data_no_uvdata = {k: data[k] for k in data.keys() - {'UVDATA'}}
+        # data = prepare_row_data_ES(input_json['TSL_FILEPATH'], input_json['SAMPLE_WELL'],
+        #                            input_json['PLATE_POSITION'],
+        #                            input_json['SEQ_NUM'],
+        #                            current_ts,
+        #                            current_app.config['UVDATA_FILE_DIR'],
+        #                            input_json['GILSON_NUMBER'])
+
+        # add uvdata file dir & tsl file dir for the prepare_row_data_ES() function
+        input_json['UVDATA_FILE_DIR'] = current_app.config['UVDATA_FILE_DIR']
+        input_json['APP_TSL_FILEPATH'] = app.config['TSL_FILEPATH']
 
         # Send a job to the task queue
         # result_ttl - specifies how long (in seconds) successful jobs and their results are kept
@@ -137,26 +134,35 @@ def post_rowdata_mongodb():
         redis_url = current_app.config['REDIS_URL'].strip().replace('"', '')
         print(f'redis url from add-task endpoint: {redis_url}')
 
-        check, cnt = query_ES_dup_projid(host,
-                                         index_name, data['PROJECT_ID'], data['SAMPLE_NAME'])
-        print(f"check duplicate project id: {data['PROJECT_ID']} - {check}")
-        print(
-            f"count for duplicates: {cnt} based on sample_name {data['SAMPLE_NAME']}")
-        if check:
-            data['PROJECT_ID'] = data['PROJECT_ID'] + f"_{cnt}"
+        oracle_params = {
+            'ORACLE_USER': app.config['ORACLE_USER'],
+            'ORACLE_PASS': app.config['ORACLE_PASS'],
+            'ORACLE_HOST': app.config['ORACLE_HOST'],
+            'ORACLE_PORT': app.config['ORACLE_PORT'],
+            'ORACLE_SERVNAME': app.config['ORACLE_SERVNAME'],
+            'ORACLE_TABLENAME': app.config['ORACLE_TABLENAME']
+        }
 
         with Connection(redis.from_url(redis_url)):
             q = Queue()
             task = q.enqueue(upload_data_to_ES, args=(host,
                                                       index_name,
                                                       sleep_time,
-                                                      data), job_timeout=60*5, result_ttl=1000)
+                                                      input_json,
+                                                      oracle_params),
+                             job_timeout=60*5, result_ttl=1000)
+
+        # remove the APP_TSL_FILEPATH and UVDATA_FILE_DIR from input_json (since
+        # was used to pass to prepare_row_data_ES() and upload_data_to_ES() only
+        # (not needed for the server response)
+        input_json = {k: input_json[k] for k in input_json.keys(
+        ) - {'UVDATA_FILE_DIR', 'APP_TSL_FILEPATH'}}
+
         q_len = len(q)  # Get the queue length
         enq_time = task.enqueued_at.strftime('%a, %d-%b-%Y %H:%M: %S')
-        message = f"""Task {task.id} queued at {enq_time}; len: {q_len} jobs queued"""
-        # return jsonify({'output': message, 'data': input_json}), 202
-        return jsonify({'output': message, 'data': data_no_uvdata}), 202
-    return jsonify({'status': f'error'})
+        message = f"""Task {task.id} queued at {enq_time}; len: {q_len} jobs queued; updated row data in oracle database"""
+        return jsonify({'output': message, 'submitted-data': input_json}), 202
+    return jsonify({'status': f'error, no input JSON data'})
 
 
 @ elasticsearch_bp.route('/es/get/rowdata/<gilson_number>', methods=['GET'])
