@@ -19,6 +19,8 @@ services:
       - FLASK_DEBUG=1
       - FLASK_ENV=testing
       - REDIS_URL="redis://redis:6379/0"
+    env_file:
+      - oracle_env_vars
     working_dir: /usr/src/app
     depends_on:
       - redis
@@ -30,6 +32,8 @@ services:
     command: python worker.py
     volumes:
       - ./app:/usr/src/app
+      - /Volumes/npsg/tecan/SourceData/SecondStage:/usr/src/app/mnt/tsl_files
+      - /Volumes/npsg/Gilson/RAW_UV_EXPORTS:/usr/src/app/mnt/uvdata_files
     working_dir: /usr/src/app
     environment:
       - REDIS_URL="redis://redis:6379/0"
