@@ -1,14 +1,16 @@
 from db_classes import OracleConnection
 from datetime import datetime
+import sys
 
 
-def upload_ordb_rowdata(rowdata_dct, usr, pw, host, port, srv, table_name, commit=True):
+def upload_ordb_rowdata(rowdata_dct, usr, pw, host, port, srv, table_name):
     assert len(rowdata_dct.keys()) == 13,\
         f"The current row data seems empty (or partially), number of values in current row data: {len(rowdata_dct)}, expecting 13 for uploading into oracle table"
 
     # remove underscore counter for project id
     if '_' in rowdata_dct['PROJECT_ID']:
         rowdata_dct['PROJECT_ID'] = rowdata_dct['PROJECT_ID'].split('_', 1)[0]
+
     with OracleConnection(usr, pw, host, port, srv) as con:
         sql_stmt = f"""UPDATE {table_name} SET PROJECT_ID = :1,
                         SAMPLE_NAME = :2,
@@ -26,17 +28,19 @@ def upload_ordb_rowdata(rowdata_dct, usr, pw, host, port, srv, table_name, commi
             rowdata_dct['BROOKS_BARCODE'],
             rowdata_dct['PLATE_ID'],
             datetime.strftime(
-                rowdata_dct['FINISH_DATE'], '%m/%d/%Y %I:%M:%S %p').strip(),
+                rowdata_dct['FINISH_DATE'], '%-m/%d/%Y %I:%M:%S %p'),
             rowdata_dct['GILSON_NUMBER'],
             rowdata_dct['PLATE_POSITION']
         ]
 
-        print(data_lst)
+        assert all([isinstance(d, str) for d in data_lst]), \
+            "Can only upload string type values, there are non-string types in the row data"
         with con.cursor() as cursor:
             cursor.execute(sql_stmt, data_lst)
-        if commit:
-            con.commit()
+        con.commit()
         print(f'successfully uploaded row data to oracle: {rowdata_dct}')
+        sys.stdout.flush()
+
 
 # def check_in_project_ids(input_project_id):
 #     '''Gets the distinct project ids to verify the inputted value is valid usign
