@@ -2,7 +2,7 @@ import xml.etree.ElementTree as ET
 import requests
 import re
 import os
-from datetime import datetime
+# from datetime import datetime
 from random import randint
 
 
@@ -10,12 +10,13 @@ from random import randint
 headers = {'Content-Type': 'application/json'}
 # url = 'http://10.133.108.219:8003/'
 url = 'http://localhost:8003/'
-hostname = f'GILSON_{randint(1,8)}'
+# hostname = f'GILSON_{randint(1,8)}'
+hostname = 'Tecan6'
 
 # xml var logs location & original date format
-orig_date_fmt = '%m/%d/%Y %I:%M:%S %p'
-# xml_file_directory = '/Volumes/npsg/Gilson/Scripts/test_xmls'
-xml_file_directory = '/Volumes/npsg/Gilson/Scripts'
+# orig_date_fmt = '%m/%d/%Y %I:%M:%S %p'
+xml_file_directory = '/Volumes/npsg/Gilson/Scripts/test_xmls'
+# xml_file_directory = '/Volumes/npsg/Gilson/Scripts'
 
 new_key_lst = ["FINISH_DATE",
                "SEQ_NUM",
@@ -54,8 +55,7 @@ def get_xml_text(xmlfile, gilson_number=hostname):
             for j, cell in enumerate(rw):  # each cell of row
                 for data in cell:  # each data value of cell
                     if j == 0:
-                        data_row_dict[f'{i}_time'] = datetime.strptime(
-                            data.text, orig_date_fmt).strftime('%Y-%b-%d %H:%M:%S')
+                        data_row_dict[f'{i}_time'] = data.text
                     if j == 1:
                         data_row_dict[f'{i}_sample_line'] = int(
                             data.text)
@@ -149,10 +149,6 @@ if __name__ == "__main__":
     row_data_dict_tosend = rename_key(row_data_dict_tosend,
                                       row_data_dict_tosend.keys(),
                                       new_key_lst)
-
-    # for empty_keys in ["PROJECT_ID", "SAMPLE_NAME", "BARCODE",
-    #                    "PLATE_ID", "BROOKS_BARCODE"]:
-    #     row_data_dict_tosend[empty_keys] = None
 
     row_data_dict_tosend['TSL_FILEPATH'] = '/Volumes/npsg/tecan/SourceData/SecondStage/Sample List_Combined_tmp/1578_test.tsl'
 
