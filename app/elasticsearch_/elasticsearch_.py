@@ -1,11 +1,12 @@
 from functions import *
 import time
-from flask import current_app as app
 from db_classes import ElasticsearchConnection
 from elasticsearch import exceptions
+from oracle_ import oracle_
 
 
-def prepare_row_data_ES(tsl_file_path, sw_loc, plt_loc, seq_nbr, current_time, uvdata_file_dir, hostname):
+def prepare_row_data_ES(tsl_file_path, sw_loc, plt_loc, seq_nbr, current_time,
+                        uvdata_file_dir, hostname, app_tsl_filepath):
     '''print out the current running row data from raw worklist file and then
     prepare for ES ingestion; RETURNS a dictionary'''
 
@@ -16,7 +17,7 @@ def prepare_row_data_ES(tsl_file_path, sw_loc, plt_loc, seq_nbr, current_time, u
     real_tsl_filepath = tsl_file_path
 
     tsl_file_path = os.path.join(
-        app.config['TSL_FILEPATH'], 'Sample List_Combined_tmp', tsl_file_name)
+        app_tsl_filepath, 'Sample List_Combined_tmp', tsl_file_name)
     print(f"new tsl file path: {tsl_file_path}")
 
     # get current row data
@@ -162,20 +163,51 @@ def get_index_length(host, index_name):
         return int(stmt)
 
 
-def upload_data_to_ES(host, index_name, sleep_time, row_data_dict):
+# def upload_data_to_ES(host, index_name, sleep_time, row_data_dict):
+def upload_data_to_ES(host, index_name, sleep_time, input_json, oracle_params):
+
+    try:
+        current_ts = datetime.strptime(
+            input_json['FINISH_DATE'], "%m/%d/%Y %I:%M:%S %p")
+    except ValueError as e:
+        current_ts = datetime.strptime(
+            input_json['FINISH_DATE'], "%Y-%b-%d %H:%M:%S")
+
+    data = prepare_row_data_ES(input_json['TSL_FILEPATH'], input_json['SAMPLE_WELL'],
+                               input_json['PLATE_POSITION'],
+                               input_json['SEQ_NUM'],
+                               current_ts,
+                               input_json['UVDATA_FILE_DIR'],
+                               input_json['GILSON_NUMBER'],
+                               input_json['APP_TSL_FILEPATH'])
+
+    print(f"the finish date is: {data['FINISH_DATE']}")
+
+    check, cnt = query_ES_dup_projid(host,
+                                     index_name, data['PROJECT_ID'], data['SAMPLE_NAME'])
+    print(f"check duplicate project id: {data['PROJECT_ID']} - {check}")
+    print(
+        f"count for duplicates: {cnt} based on sample_name {data['SAMPLE_NAME']}")
+    if check:
+        data['PROJECT_ID'] = data['PROJECT_ID'] + f"_{cnt}"
+
+    # initalise the ES return object (dict)
     res = {'result': 'empty', '_id': 'empty'}
+
+    # timer to wait for TRILUTION to export raw UV data
     for i in range(sleep_time, 0, -1):
         if i % 5 == 0:
             print(f'sleeping ... {i} secs left ...')
         time.sleep(1)
-    print()
-    if row_data_dict:
+
+    # upload to ES
+    if data:
         print('uploading to ES database ...')
         with ElasticsearchConnection(host=host) as es:
             res = es.index(
                 index=index_name,  # use ES default _id assignment
                 refresh='wait_for',  # without this, ES lags and cannnot update quick enough
-                body=row_data_dict
+                body=data
             )
             # refresh
             es.indices.refresh(index=index_name)
@@ -183,9 +215,22 @@ def upload_data_to_ES(host, index_name, sleep_time, row_data_dict):
             while es.cluster.pending_tasks()['tasks']:
                 pass
 
-    print(f"result of upload: {res['result']}; _id: {res['_id']}")
     print()
-    print(f"current document count: {get_index_length(host,index_name)}")
+    print(f"result of ES upload: {res['result']}; _id: {res['_id']}")
+    print("####################")
+    print(f"current ES document count: {get_index_length(host,index_name)}")
+
+    # upload missing fields to oracle without the uvdata
+    # for oracle upload
+    data_no_uvdata = {k: data[k] for k in data.keys() - {'UVDATA'}}
+    oracle_.upload_ordb_rowdata(data_no_uvdata,
+                                oracle_params['ORACLE_USER'],
+                                oracle_params['ORACLE_PASS'],
+                                oracle_params['ORACLE_HOST'],
+                                oracle_params['ORACLE_PORT'],
+                                oracle_params['ORACLE_SERVNAME'],
+                                oracle_params['ORACLE_TABLENAME'],
+                                )
 
 
 def query_ES_data(host, index_name, project_id, sample_well):
