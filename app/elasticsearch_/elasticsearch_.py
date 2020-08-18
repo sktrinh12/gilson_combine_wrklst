@@ -3,6 +3,7 @@ import time
 from db_classes import ElasticsearchConnection
 from elasticsearch import exceptions
 from oracle_ import oracle_
+import sys
 
 
 def prepare_row_data_ES(tsl_file_path, sw_loc, plt_loc, seq_nbr, current_time,
@@ -215,11 +216,10 @@ def upload_data_to_ES(host, index_name, sleep_time, input_json, oracle_params):
             while es.cluster.pending_tasks()['tasks']:
                 pass
 
-    print()
     print(f"result of ES upload: {res['result']}; _id: {res['_id']}")
     print("####################")
     print(f"current ES document count: {get_index_length(host,index_name)}")
-
+    sys.stdout.flush()
     # upload missing fields to oracle without the uvdata
     # for oracle upload
     data_no_uvdata = {k: data[k] for k in data.keys() - {'UVDATA'}}
@@ -231,6 +231,7 @@ def upload_data_to_ES(host, index_name, sleep_time, input_json, oracle_params):
                                 oracle_params['ORACLE_SERVNAME'],
                                 oracle_params['ORACLE_TABLENAME'],
                                 )
+    return data_no_uvdata
 
 
 def query_ES_data(host, index_name, project_id, sample_well):
