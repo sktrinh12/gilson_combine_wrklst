@@ -32,8 +32,8 @@ services:
     command: python worker.py
     volumes:
       - ./app:/usr/src/app
-      - /Volumes/npsg/tecan/SourceData/SecondStage:/usr/src/app/mnt/tsl_files
-      - /Volumes/npsg/Gilson/RAW_UV_EXPORTS:/usr/src/app/mnt/uvdata_files
+      - /mnt/npsg/tecan/SourceData/SecondStage:/usr/src/app/mnt/tsl_files
+      - /mnt/npsg/Gilson/RAW_UV_EXPORTS:/usr/src/app/mnt/uvdata_files
     working_dir: /usr/src/app
     environment:
       - REDIS_URL="redis://redis:6379/0"
