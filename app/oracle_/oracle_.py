@@ -22,7 +22,7 @@ def upload_ordb_rowdata(rowdata_dct, usr, pw, host, port, srv, table_name):
                             AND PLATE_POSITION = :8"""
 
         dt = datetime.strftime(
-            rowdata_dct['FINISH_DATE'], '%-m/%d/%Y %I:%M:%S %p')
+            rowdata_dct['FINISH_DATE'], '%-m/%-d/%Y %-I:%M:%S %p')
         data_lst = [
             rowdata_dct['PROJECT_ID'],
             rowdata_dct['SAMPLE_NAME'],
@@ -33,8 +33,6 @@ def upload_ordb_rowdata(rowdata_dct, usr, pw, host, port, srv, table_name):
             rowdata_dct['GILSON_NUMBER'],
             rowdata_dct['PLATE_POSITION']
         ]
-        print(f'datetime string for oracle upload: { dt }')
-        sys.stdout.flush()
 
         for d in data_lst:
             print(d)
