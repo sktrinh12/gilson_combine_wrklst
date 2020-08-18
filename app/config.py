@@ -50,9 +50,15 @@ class TestingConfig(Config):
 
     REDIS_URL = os.getenv("REDIS_URL")
 
+    ORACLE_TABLENAME = 'GILSON_RUN_LOGS'
+    ORACLE_USER = os.getenv('ORACLE_USER')
+    ORACLE_PASS = os.getenv('ORACLE_PASS')
+    ORACLE_HOST = os.getenv('ORACLE_HOST')
+    ORACLE_PORT = os.getenv('ORACLE_PORT')
+    ORACLE_SERVNAME = os.getenv('ORACLE_SERVNAME')
+
     MGDB_COLLECTION = 'worklist_collection'
     MGDB_DBNAME = 'gilson_logs'  # for plotting, storing each run; alternative to ES
-    # MGDB_FP = 'file_path'
     MGDB_ROWDATA = 'row_data'  # collection name
     MGDB_CONTR = 'mongodb'  # host name
 
