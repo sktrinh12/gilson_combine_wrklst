@@ -21,17 +21,24 @@ def upload_ordb_rowdata(rowdata_dct, usr, pw, host, port, srv, table_name):
                             AND GILSON_NUMBER = :7
                             AND PLATE_POSITION = :8"""
 
+        dt = datetime.strftime(
+            rowdata_dct['FINISH_DATE'], '%-m/%d/%Y %I:%M:%S %p')
         data_lst = [
             rowdata_dct['PROJECT_ID'],
             rowdata_dct['SAMPLE_NAME'],
             rowdata_dct['BARCODE'],
             rowdata_dct['BROOKS_BARCODE'],
             rowdata_dct['PLATE_ID'],
-            datetime.strftime(
-                rowdata_dct['FINISH_DATE'], '%-m/%d/%Y %I:%M:%S %p'),
+            dt,
             rowdata_dct['GILSON_NUMBER'],
             rowdata_dct['PLATE_POSITION']
         ]
+        print(f'datetime string for oracle upload: { dt }')
+        sys.stdout.flush()
+
+        for d in data_lst:
+            print(d)
+            sys.stdout.flush()
 
         assert all([isinstance(d, str) for d in data_lst]), \
             "Can only upload string type values, there are non-string types in the row data"

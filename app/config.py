@@ -64,6 +64,6 @@ class TestingConfig(Config):
 
     TSL_FILEPATH = '/usr/src/app/mnt/tsl_files'
     UVDATA_FILE_DIR = '/usr/src/app/mnt/uvdata_files'
-    SLEEP_TIME = 60*4
-    # SLEEP_TIME = 4
+    # SLEEP_TIME = 60*4
+    SLEEP_TIME = 4
     # JSON_SORT_KEYS = False  # prevent response from being sorted alphabetically
