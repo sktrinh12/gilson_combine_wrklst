@@ -167,6 +167,12 @@ def get_index_length(host, index_name):
 # def upload_data_to_ES(host, index_name, sleep_time, row_data_dict):
 def upload_data_to_ES(host, index_name, sleep_time, input_json, oracle_params):
 
+    # timer to wait for TRILUTION to export raw UV data
+    for i in range(sleep_time, 0, -1):
+        if i % 5 == 0:
+            print(f'sleeping ... {i} secs left ...')
+        time.sleep(1)
+
     try:
         current_ts = datetime.strptime(
             input_json['FINISH_DATE'], "%m/%d/%Y %I:%M:%S %p")
@@ -194,12 +200,6 @@ def upload_data_to_ES(host, index_name, sleep_time, input_json, oracle_params):
 
     # initalise the ES return object (dict)
     res = {'result': 'empty', '_id': 'empty'}
-
-    # timer to wait for TRILUTION to export raw UV data
-    for i in range(sleep_time, 0, -1):
-        if i % 5 == 0:
-            print(f'sleeping ... {i} secs left ...')
-        time.sleep(1)
 
     # upload to ES
     if data:
