@@ -16,9 +16,11 @@ def prepare_row_data_ES(tsl_file_path, sw_loc, plt_loc, seq_nbr, current_time,
     projectid = tsl_file_name.split('_', 1)[0]
     # make copy of the real path passed from the post request
     real_tsl_filepath = tsl_file_path
+    # get parent directory of the tsl file
+    parent_dir = ntpath.basename(ntpath.dirname(tsl_file_path))
 
     tsl_file_path = os.path.join(
-        app_tsl_filepath, 'Sample List_Combined_tmp', tsl_file_name)
+        app_tsl_filepath, parent_dir, tsl_file_name)
     print(f"new tsl file path: {tsl_file_path}")
 
     # get current row data
