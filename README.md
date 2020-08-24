@@ -1,4 +1,4 @@
-# Gilson Worklist Combiner
+# Gilson Worklist Logger
 
 A flask web-app that logs chromatography runs as they finish on the Gilson GX-281 liquid handler. The web-app serves as a central information hub for end-users to easily analyse and interpret without having to dig for disparate information. There is an option to automatically generate a `.tsl` worklist file to import into Trilution software in order to run multiple samples on the GX-180 liquid handler. Contains test code (as Jupyter notebooks `ipynb`) and raw data. The back-end includes `ElasticSearch`, `MongoDB`, `Redis`, `RQ` and `Oracle`. Redis and RQ are combined to act as a task queue processor, ElasticSearch is used for querying and saving all the metadata and chromatography data, MongoDB is used for current run logging and Oracle serves as a backup for ElasticSearch since the project is trying out ElasticSearch's capabilities.
 
