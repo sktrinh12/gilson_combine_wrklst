@@ -398,3 +398,11 @@ def show_logs():
         host = current_app.config['HOST_PLOT']
     return render_template('elasticsearch_/logs.html', output=output, host=host,
                            switch_var='log')
+
+
+@ elasticsearch_bp.route("/es/time")
+def get_time():
+    '''simple route/view to host the current time (accurate) for the raspberry
+    pi'''
+    time = datetime.now().strftime("%Y-%b-%d %H:%M:%S")
+    return jsonify({"time": time})
