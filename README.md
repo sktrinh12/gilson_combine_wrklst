@@ -1,14 +1,11 @@
-# Gilson Worklist Combiner 
+# Gilson Worklist Combiner
 
-Automatically generates a `.tsl` worklist file to import into Trilution software to run multiple samples on the GX-180 liquid handler. Contains test code (as Jupyter notebooks `ipynb`) and raw data. 
+A flask web-app that logs chromatography runs as they finish on the Gilson GX-281 liquid handler. The web-app serves as a central information hub for end-users to easily analyse and interpret without having to dig for disparate information. There is an option to automatically generate a `.tsl` worklist file to import into Trilution software in order to run multiple samples on the GX-180 liquid handler. Contains test code (as Jupyter notebooks `ipynb`) and raw data. The back-end includes `ElasticSearch`, `MongoDB`, `Redis`, `RQ` and `Oracle`. Redis and RQ are combined to act as a task queue processor, ElasticSearch is used for querying and saving all the metadata and chromatography data, MongoDB is used for current run logging and Oracle serves as a backup for ElasticSearch since the project is trying out ElasticSearch's capabilities.
 
 ## Usage
 
-For testing purposes, the use of a `.py` file, called `combine_gilson_worklist_v2.py` is used to combine individual worklists first, then subsequent use of `gilson_track_runs_sqlite3.py` or `gilson_track_runs_oracle.py` to uplaod data to the database. A simple flask app was developed to render the database entires (logging) as html, and also serve an API to upload the data which consist of the core code from `gilson_track_runs_oracle.py`. 
+Enter the command: `docker-compose build` in the app directory and subsequently, `docker-compose up`. The (client-side) gilson local computer will send a post request to the server-side which will collect all the metadata on the current run and upload to the ElasticSearch database. There is a script that will be executed on the client-side that will be run on the Trilution software. A sleep timer that will trigger after which the server-side would search for the raw chromatography export file on the shared network drive. This file is then uploaded to ElasticSearch and the end-user is able to view the chromatography trace without having to rely on the proprietary software, and more importantly without having to wait until the entire run is finished.
 
-From commman line, type:
-```
-python combine_gilson_worklist_v2.py ${1} ${2}
+## Screenshot
 
-```
-The two arguments `${1}` and `${2}` would be the two separate worklists generate by the Tecan liquid handler that solubilized samples prior to. The app is dockerized and can be built by entering the command: `docker build -t gilson-logs:latest .` within the directory and then running it using the command: `docker -rm -it --env_file=env_file_name gilson-logs:latest`. 
+![screenshot](app/static/screenshot.png)
